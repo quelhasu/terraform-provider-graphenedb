@@ -1,7 +1,7 @@
 package graphenedb
 
 import (
-	"log"
+	"fmt"
 
 	"github.com/hashicorp/terraform/helper/schema"
 )
@@ -42,33 +42,33 @@ func resourceDatabase() *schema.Resource {
 }
 
 func resourceDatabaseCreate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] Resource state: %#v", d.State())
+	// cli.Debug.Printf("Resource state: %#v", d.State())
 
 	name, version, awsRegion, plan := getDatabaseResourceData(d)
-	client := meta.(*GrapheneDBClient) //.Databases()
-	log.Printf("[DEBUG] Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
+	client := meta.(*GrapheneDBClient).NewDatabasesClient()
+	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
-	// database, err := client.CreateDatabase(name, version, awsRegion, plan)
-	// if err != nil {
-	// 	return fmt.Errorf("Error creating database %s: %s", name, err)
-	// }
+	_, err := client.CreateDatabase(name, version, awsRegion, plan)
+	if err != nil {
+		return fmt.Errorf("Error creating database %s: %s", name, err)
+	}
 
 	// d.SetId(database.ID)
 	return nil
 }
 
 func resourceDatabaseRead(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] Resource state: %#v", d.State())
+	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 
 func resourceDatabaseUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] Resource state: %#v", d.State())
+	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 
 func resourceDatabaseDelete(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] Resource state: %#v", d.State())
+	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 

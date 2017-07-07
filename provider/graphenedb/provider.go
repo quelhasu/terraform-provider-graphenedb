@@ -6,6 +6,7 @@ import (
 )
 
 func Provider() terraform.ResourceProvider {
+	// cli.ClientLogger(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"graphenedb_database": resourceDatabase(),

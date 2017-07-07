@@ -2,15 +2,18 @@ package client
 
 import "fmt"
 
-type ResourceClient struct {
+type ResourceClient interface {
+	CreateResource(requestBody interface{}, responseBody interface{}) error
+}
+
+type DefaultResourceClient struct {
 	*AuthenticatedClient
 	ResourceDescription string
-	ContainerPath       string
 	ResourceRootPath    string
 }
 
-func (c *ResourceClient) createResource(requestBody interface{}, responseBody interface{}) error {
-	request, err := c.newAuthenticatedPostRequest(c.ContainerPath, requestBody)
+func (c *DefaultResourceClient) CreateResource(requestBody interface{}, responseBody interface{}) error {
+	request, err := c.newAuthenticatedPostRequest(c.ResourceRootPath, requestBody)
 	if err != nil {
 		return err
 	}
