@@ -73,9 +73,9 @@ func (c *Config) Client() (*GrapheneDBClient, error) {
 
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 
-	user:=     d.Get("user").(string)
-	password:= d.Get("password").(string)
-	endpoint:= d.Get("endpoint").(string)
+	user := d.Get("user").(string)
+	password := d.Get("password").(string)
+	endpoint := d.Get("endpoint").(string)
 	// Warning or errors can be collected in a slice type
 
 	config := &Config{

@@ -1,5 +1,7 @@
 package client
 
+import "log"
+
 type DatabasesClient struct {
 	ResourceClient
 }
@@ -7,9 +9,8 @@ type DatabasesClient struct {
 type DatabaseSpec struct {
 	name    string `json:"name"`
 	version string `json:"version"`
-	region  string `json:"region"`
+	awsRegion  string `json:"awsRegion"`
 	plan    string `json:"plan"`
-	cidr    string `json:"cidr"`
 }
 
 type DatabaseDetail struct {
@@ -30,7 +31,7 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 		resourceClient = &DefaultResourceClient{
 			AuthenticatedClient: c,
 			ResourceDescription: "database list",
-			ResourceRootPath:    "/databases",
+			ResourceRootPath:    "/v1/databases",
 		}
 	}
 
@@ -40,18 +41,18 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 }
 
 func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, cidr string) (*DatabaseDetail, error) {
-	// 	spec := DatabaseSpec{
-	// 		name:      name,
-	// 		version:   version,
-	// 		region: region,
-	// 		plan:      plan,
-	// 		cidr: 	cidr
-	// 	}
+	spec := DatabaseSpec{
+		name:    name,
+		version: version,
+		awsRegion:  region,
+		plan:    plan,
+	}
 
 	var databaseDetail DatabaseDetail
-	// 	if err := c.createResource(&spec, &databaseDetail); err != nil {
-	// 		return nil, err
-	// 	}
+	if err := c.CreateResource(&spec, &databaseDetail); err != nil {
+		log.Printf("DatabaseDetail: ", err)
+		return nil, err
+	}
 
 	return c.success(&databaseDetail)
 }

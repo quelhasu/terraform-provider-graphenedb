@@ -28,5 +28,8 @@ func (c *AuthenticatedClient) newAuthenticatedRequest(builder func() (*http.Requ
 }
 
 func (c *AuthenticatedClient) newAuthenticatedPostRequest(path string, body interface{}) (*http.Request, error) {
-	return c.newAuthenticatedRequest(func() (*http.Request, error) { return c.newPostRequest(path, body) })
+	return c.newAuthenticatedRequest(
+		func() (*http.Request, error) { 
+			return c.newPostRequest(path, body, c.credentials.password) 
+	})
 }
