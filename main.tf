@@ -13,6 +13,11 @@ provider "graphenedb" {
   password = "api_key"
   endpoint = "api_endpoint"
 }
+resource "graphenedb_pvc" "creation" {
+  label  = "pvc_label"
+  region = "pvc_region"
+  cidr   = "pvc_cidr"
+}
 
 resource "graphenedb_database" "creation" {
   name    = "db_db"

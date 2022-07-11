@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 )
 
@@ -61,6 +62,12 @@ func (c *apiClient) newRequest(method, path string, body interface{}) (*http.Req
 		c.apiEndpoint.ResolveReference(urlPath).String(),
 		marshalToReader(body),
 	)
+
+	requestDump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println(string(requestDump))
 
 	if err != nil {
 		return nil, err

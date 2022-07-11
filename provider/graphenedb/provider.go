@@ -2,7 +2,6 @@ package graphenedb
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -24,6 +23,7 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"graphenedb_database": resourceDatabase(),
+			"graphenedb_pvc": resourcePvc(),
 		},
 		Schema: map[string]*schema.Schema{
 			"user": &schema.Schema{
@@ -83,8 +83,6 @@ func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 		Password: password,
 		Endpoint: endpoint,
 	}
-
-	log.Print("Config:", config, "\n")
 
 	return config.Client()
 }

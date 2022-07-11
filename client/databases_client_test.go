@@ -63,11 +63,10 @@ var _ = Describe("DatabasesClient", func() {
 		version := "db_version"
 		awsRegion := "db_awsRegion"
 		plan := "db_plan"
-		cidr := "db_cidr"
 
 		Context("returns DatabaseDetail", func() {
 			It("should set resource root path", func() {
-				client.CreateDatabase(name, version, awsRegion, plan, cidr)
+				client.CreateDatabase(name, version, awsRegion, plan)
 				Expect(client).ToNot(BeNil())
 			})
 		})

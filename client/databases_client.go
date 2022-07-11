@@ -14,12 +14,7 @@ type DatabaseSpec struct {
 }
 
 type DatabaseDetail struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	AwsRegion string `json:"awsRegion"`
-	Plan      string `json:"plan"`
-	URI       string `json:"uri"`
+	OperationID        string `json:"id"`
 }
 
 func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClient) *DatabasesClient {
@@ -40,7 +35,7 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 	}
 }
 
-func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, cidr string) (*DatabaseDetail, error) {
+func (c *DatabasesClient) CreateDatabase(name, version, region, plan string) (*DatabaseDetail, error) {
 	spec := DatabaseSpec{
 		name:    name,
 		version: version,

@@ -39,11 +39,6 @@ func resourceDatabase() *schema.Resource {
 				Required: true,
 				ForceNew: false,
 			},
-			"cidr": &schema.Schema{
-				Type:     schema.TypeString,
-				Required: true,
-				ForceNew: false,
-			},
 		},
 	}
 }
@@ -51,13 +46,13 @@ func resourceDatabase() *schema.Resource {
 func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 
-	name, version, region, plan, cidr := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("cidr").(string)
+	name, version, region, plan := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string)
 
-	log.Printf("Helloooo", name, version, region, plan, cidr)
+	log.Printf("Creating db with : ", name, version, region, plan)
 	client := m.(*GrapheneDBClient).NewDatabasesClient()
 	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
-	_, err := client.CreateDatabase(name, version, region, plan, cidr)
+	_, err := client.CreateDatabase(name, version, region, plan)
 	if err != nil {
 		return diag.Errorf("Error creating database %s: %s", name, err)
 	}
