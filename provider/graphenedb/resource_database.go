@@ -1,17 +1,19 @@
 package graphenedb
 
 import (
-	"fmt"
+	"context"
+	"log"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceDatabase() *schema.Resource {
 	return &schema.Resource{
-		Create: resourceDatabaseCreate,
-		Read:   resourceDatabaseRead,
-		Update: resourceDatabaseUpdate,
-		Delete: resourceDatabaseDelete,
+		CreateContext: resourceDatabaseCreate,
+		ReadContext:   resourceDatabaseRead,
+		UpdateContext: resourceDatabaseUpdate,
+		DeleteContext: resourceDatabaseDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": &schema.Schema{
@@ -26,7 +28,7 @@ func resourceDatabase() *schema.Resource {
 				ForceNew: false,
 			},
 
-			"awsRegion": &schema.Schema{
+			"region": &schema.Schema{
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
@@ -37,44 +39,44 @@ func resourceDatabase() *schema.Resource {
 				Required: true,
 				ForceNew: false,
 			},
+			"cidr": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: false,
+			},
 		},
 	}
 }
 
-func resourceDatabaseCreate(d *schema.ResourceData, meta interface{}) error {
+func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 
-	name, version, awsRegion, plan := getDatabaseResourceData(d)
-	client := meta.(*GrapheneDBClient).NewDatabasesClient()
+	name, version, region, plan, cidr := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("cidr").(string)
+
+	log.Printf("Helloooo", name, version, region, plan, cidr)
+	client := m.(*GrapheneDBClient).NewDatabasesClient()
 	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
-	_, err := client.CreateDatabase(name, version, awsRegion, plan)
+	_, err := client.CreateDatabase(name, version, region, plan, cidr)
 	if err != nil {
-		return fmt.Errorf("Error creating database %s: %s", name, err)
+		return diag.Errorf("Error creating database %s: %s", name, err)
 	}
 
 	// d.SetId(database.ID)
 	return nil
 }
 
-func resourceDatabaseRead(d *schema.ResourceData, meta interface{}) error {
+func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 
-func resourceDatabaseUpdate(d *schema.ResourceData, meta interface{}) error {
+func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 
-func resourceDatabaseDelete(d *schema.ResourceData, meta interface{}) error {
+func resourceDatabaseDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
-}
-
-func getDatabaseResourceData(d *schema.ResourceData) (string, string, string, string) {
-	return d.Get("name").(string),
-		d.Get("version").(string),
-		d.Get("awsRegion").(string),
-		d.Get("plan").(string)
 }

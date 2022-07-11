@@ -5,10 +5,11 @@ type DatabasesClient struct {
 }
 
 type DatabaseSpec struct {
-	name      string `json:"name"`
-	version   string `json:"version"`
-	awsRegion string `json:"awsRegion"`
-	plan      string `json:"plan"`
+	name    string `json:"name"`
+	version string `json:"version"`
+	region  string `json:"region"`
+	plan    string `json:"plan"`
+	cidr    string `json:"cidr"`
 }
 
 type DatabaseDetail struct {
@@ -38,12 +39,13 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 	}
 }
 
-func (c *DatabasesClient) CreateDatabase(name, version, awsRegion, plan string) (*DatabaseDetail, error) {
+func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, cidr string) (*DatabaseDetail, error) {
 	// 	spec := DatabaseSpec{
 	// 		name:      name,
 	// 		version:   version,
-	// 		awsRegion: awsRegion,
+	// 		region: region,
 	// 		plan:      plan,
+	// 		cidr: 	cidr
 	// 	}
 
 	var databaseDetail DatabaseDetail

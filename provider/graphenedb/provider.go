@@ -1,11 +1,25 @@
 package graphenedb
 
 import (
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"fmt"
+	"log"
+	"net/url"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	cli "github.com/quelhasu/terraform-provider-graphenedb/client"
 )
 
-func Provider() terraform.ResourceProvider {
+type GrapheneDBClient struct {
+	*cli.AuthenticatedClient
+}
+
+type Config struct {
+	User     string
+	Password string
+	Endpoint string
+}
+
+func Provider() *schema.Provider {
 	// cli.ClientLogger(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
@@ -38,12 +52,39 @@ func Provider() terraform.ResourceProvider {
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := Config{
-		User:     d.Get("user").(string),
-		Password: d.Get("password").(string),
-		Endpoint: d.Get("endpoint").(string),
+func (c *Config) Client() (*GrapheneDBClient, error) {
+	uri, err := url.ParseRequestURI(c.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid endpoint URI: %s", err)
 	}
+
+	client := cli.NewClient(c.User, c.Password, uri)
+	authenticatedClient, err := client.Authenticate()
+	if err != nil {
+		return nil, fmt.Errorf("Authentication failed: %s", err)
+	}
+
+	grapheneDBClient := &GrapheneDBClient{
+		AuthenticatedClient: authenticatedClient,
+	}
+
+	return grapheneDBClient, err
+}
+
+func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+
+	user:=     d.Get("user").(string)
+	password:= d.Get("password").(string)
+	endpoint:= d.Get("endpoint").(string)
+	// Warning or errors can be collected in a slice type
+
+	config := &Config{
+		User:     user,
+		Password: password,
+		Endpoint: endpoint,
+	}
+
+	log.Print("Config:", config, "\n")
 
 	return config.Client()
 }

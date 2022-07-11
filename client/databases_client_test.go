@@ -3,7 +3,7 @@ package client_test
 import (
 	"reflect"
 
-	. "github.com/ervinjohnson/terraform-provider-graphenedb/client"
+	. "github.com/quelhasu/terraform-provider-graphenedb/client"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -63,10 +63,11 @@ var _ = Describe("DatabasesClient", func() {
 		version := "db_version"
 		awsRegion := "db_awsRegion"
 		plan := "db_plan"
+		cidr := "db_cidr"
 
 		Context("returns DatabaseDetail", func() {
 			It("should set resource root path", func() {
-				client.CreateDatabase(name, version, awsRegion, plan)
+				client.CreateDatabase(name, version, awsRegion, plan, cidr)
 				Expect(client).ToNot(BeNil())
 			})
 		})
