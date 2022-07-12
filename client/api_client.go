@@ -50,6 +50,21 @@ func (c *apiClient) newPostRequest(path string, body interface{}, api_key string
 	return request, nil
 }
 
+func (c *apiClient) newGetRequest(path string, pathId string, api_key string) (*http.Request, error) {
+	path_w_id := fmt.Sprintf("%s/%s", path, pathId)
+	request, err := c.newRequest("GET", path_w_id, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("api_key", api_key)
+
+	log.Printf("Request Header:", request.Header)
+	log.Printf("Request :", request)
+	return request, nil
+}
+
 func (c *apiClient) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	urlPath, err := url.Parse(path)
 	if err != nil {

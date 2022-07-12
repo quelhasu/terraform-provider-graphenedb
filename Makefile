@@ -3,7 +3,7 @@ HOSTNAME=github.com
 NAMESPACE=quelhasu
 NAME=graphenedb
 BINARY=terraform-provider-${NAME}
-VERSION=0.0.9
+VERSION=0.0.1
 OS_ARCH=darwin_amd64
 
 default: install

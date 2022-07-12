@@ -1,20 +1,20 @@
 package client
 
-type PvcClient struct {
+type VpcClient struct {
 	ResourceClient
 }
 
-type PvcSpec struct {
+type VpcSpec struct {
 	Label    string `json:"label"`
 	AwsRegion  string `json:"awsRegion"`
 	CidrBlock    string `json:"cidrBlock"`
 }
 
-type PvcDetail struct {
+type VpcDetail struct {
 	ID        string `json:"id"`
 }
 
-func (c *AuthenticatedClient) NewPvcClient(resourceClients ...ResourceClient) *PvcClient {
+func (c *AuthenticatedClient) NewVpcClient(resourceClients ...ResourceClient) *VpcClient {
 	var resourceClient ResourceClient
 
 	if len(resourceClients) > 0 {
@@ -27,27 +27,27 @@ func (c *AuthenticatedClient) NewPvcClient(resourceClients ...ResourceClient) *P
 		}
 	}
 
-	return &PvcClient{
+	return &VpcClient{
 		ResourceClient: resourceClient,
 	}
 }
 
-func (c *PvcClient) CreatePvc(label string, cidr string, region string) (*PvcDetail, error) {
-	spec := PvcSpec{
+func (c *VpcClient) CreateVpc(label string, cidr string, region string) (*VpcDetail, error) {
+	spec := VpcSpec{
 		Label:    label,
 		AwsRegion:  region,
 		CidrBlock: cidr,
 	}
 
-	var pvcDetail PvcDetail
-	if err := c.CreateResource(&spec, &pvcDetail); err != nil {
+	var vpcDetail VpcDetail
+	if err := c.CreateResource(&spec, &vpcDetail); err != nil {
 		return nil, err
 	}
 
-	return c.success(&pvcDetail)
+	return c.success(&vpcDetail)
 }
 
-func (c *PvcClient) success(pvcDetail *PvcDetail) (*PvcDetail, error) {
-	// 	c.unqualify(&pvcDetail.Name)
-	return pvcDetail, nil
+func (c *VpcClient) success(vpcDetail *VpcDetail) (*VpcDetail, error) {
+	// 	c.unqualify(&vpcDetail.Name)
+	return vpcDetail, nil
 }

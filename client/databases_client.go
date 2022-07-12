@@ -14,8 +14,8 @@ type DatabaseSpec struct {
 	Vpc			string `json:"privateNetworkId"`
 }
 
-type DatabaseDetail struct {
-	OperationID        string `json:"operationId"`
+type DatabaseCreationDetail struct {
+	OperationID        string `json:"operation"`
 }
 
 func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClient) *DatabasesClient {
@@ -36,7 +36,7 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 	}
 }
 
-func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc string) (*DatabaseDetail, error) {
+func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc string) (*DatabaseCreationDetail, error) {
 	spec := DatabaseSpec{
 		Name:    name,
 		Version: version,
@@ -45,16 +45,22 @@ func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc
 		Vpc: vpc,
 	}
 
-	var databaseDetail DatabaseDetail
-	if err := c.CreateResource(&spec, &databaseDetail); err != nil {
-		log.Printf("DatabaseDetail: ", err)
+	var dbCreationDetail DatabaseCreationDetail
+	if err := c.CreateResource(&spec, &dbCreationDetail); err != nil {
+		log.Printf("DatabaseCreationDetail: ", err)
 		return nil, err
 	}
 
-	return c.success(&databaseDetail)
+	return &dbCreationDetail, nil
 }
 
-func (c *DatabasesClient) success(databaseDetail *DatabaseDetail) (*DatabaseDetail, error) {
-	// 	c.unqualify(&databaseDetail.Name)
-	return databaseDetail, nil
-}
+// func (c *DatabasesClient) FetchDatabaseDetail(operationId string) (*DatabaseDetail, error) {
+
+// 	var databaseDetail DatabaseDetail
+// 	if err := c.FetchResource(operationId, &databaseDetail); err != nil {
+// 		log.Printf("DatabaseDetail: ", err)
+// 		return nil, err
+// 	}
+
+// 	return &databaseDetail, nil
+// }
