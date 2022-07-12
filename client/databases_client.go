@@ -7,14 +7,15 @@ type DatabasesClient struct {
 }
 
 type DatabaseSpec struct {
-	name    string `json:"name"`
-	version string `json:"version"`
-	awsRegion  string `json:"awsRegion"`
-	plan    string `json:"plan"`
+	Name    string `json:"name"`
+	Version string `json:"version"`
+	AwsRegion  string `json:"awsRegion"`
+	Plan    string `json:"plan"`
+	Vpc			string `json:"privateNetworkId"`
 }
 
 type DatabaseDetail struct {
-	OperationID        string `json:"id"`
+	OperationID        string `json:"operationId"`
 }
 
 func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClient) *DatabasesClient {
@@ -35,12 +36,13 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 	}
 }
 
-func (c *DatabasesClient) CreateDatabase(name, version, region, plan string) (*DatabaseDetail, error) {
+func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc string) (*DatabaseDetail, error) {
 	spec := DatabaseSpec{
-		name:    name,
-		version: version,
-		awsRegion:  region,
-		plan:    plan,
+		Name:    name,
+		Version: version,
+		AwsRegion:  region,
+		Plan:    plan,
+		Vpc: vpc,
 	}
 
 	var databaseDetail DatabaseDetail
