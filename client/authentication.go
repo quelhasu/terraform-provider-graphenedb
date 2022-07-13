@@ -34,9 +34,16 @@ func (c *AuthenticatedClient) newAuthenticatedPostRequest(path string, body inte
 	})
 }
 
-func (c *AuthenticatedClient) newAuthenticatedGetRequest(path string, pathId string) (*http.Request, error) {
+func (c *AuthenticatedClient) newAuthenticatedPutRequest(path string, body interface{}) (*http.Request, error) {
 	return c.newAuthenticatedRequest(
 		func() (*http.Request, error) { 
-			return c.newGetRequest(path, pathId, c.credentials.password) 
+			return c.newPutRequest(path, body, c.credentials.password) 
+	})
+}
+
+func (c *AuthenticatedClient) newAuthenticatedGetRequest(path string) (*http.Request, error) {
+	return c.newAuthenticatedRequest(
+		func() (*http.Request, error) { 
+			return c.newGetRequest(path, c.credentials.password) 
 	})
 }
