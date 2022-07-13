@@ -1,7 +1,5 @@
 package client
 
-import "log"
-
 type DatabasesClient struct {
 	ResourceClient
 }
@@ -47,20 +45,8 @@ func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc
 
 	var dbCreationDetail DatabaseCreationDetail
 	if err := c.CreateResource(&spec, &dbCreationDetail); err != nil {
-		log.Printf("DatabaseCreationDetail: ", err)
 		return nil, err
 	}
 
 	return &dbCreationDetail, nil
 }
-
-// func (c *DatabasesClient) FetchDatabaseDetail(operationId string) (*DatabaseDetail, error) {
-
-// 	var databaseDetail DatabaseDetail
-// 	if err := c.FetchResource(operationId, &databaseDetail); err != nil {
-// 		log.Printf("DatabaseDetail: ", err)
-// 		return nil, err
-// 	}
-
-// 	return &databaseDetail, nil
-// }

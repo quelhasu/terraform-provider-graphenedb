@@ -45,8 +45,6 @@ func (c *apiClient) newPostRequest(path string, body interface{}, api_key string
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("api_key", api_key)
 
-	log.Printf("Request Header:", request.Header)
-	log.Printf("Request :", request)
 	return request, nil
 }
 
@@ -60,8 +58,6 @@ func (c *apiClient) newGetRequest(path string, pathId string, api_key string) (*
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("api_key", api_key)
 
-	log.Printf("Request Header:", request.Header)
-	log.Printf("Request :", request)
 	return request, nil
 }
 
@@ -70,8 +66,6 @@ func (c *apiClient) newRequest(method, path string, body interface{}) (*http.Req
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Request Path: ", path)
-	log.Printf("Request Body : ", body)
 	req, err := http.NewRequest(
 		method,
 		c.apiEndpoint.ResolveReference(urlPath).String(),

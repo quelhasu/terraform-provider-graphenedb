@@ -1,7 +1,5 @@
 package client
 
-import "log"
-
 type OperationsClient struct {
 	ResourceClient
 }
@@ -36,7 +34,6 @@ func (c *OperationsClient) FetchOperationDetail(operationId string) (*OperationD
 
 	var operationDetail OperationDetail
 	if err := c.FetchResource(operationId, &operationDetail); err != nil {
-		log.Printf("OperationDetail: ", err)
 		return nil, err
 	}
 

@@ -3,6 +3,7 @@ package graphenedb
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -64,7 +65,31 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m inter
 		return diag.Errorf("Error creating database %s: %s", name, err)
 	}
 
-	d.SetId(database.OperationID)
+	operation := database.OperationID
+	log.Printf("Fetch operation : ", operation)
+	client_op := m.(*GrapheneDBClient).NewOperationsClient()
+
+	operationDetail, err_op := client_op.FetchOperationDetail(operation)
+
+	for operationDetail.Stopped == false && err_op == nil  {
+		log.Println("Still fetching operation....")
+
+		if err_op != nil {
+			return diag.Errorf("Error fetching operation %s: %s", operation, err_op)
+		}
+
+		// wait 10 sec to avoid overloading the API.
+		time.Sleep(10 * time.Second)
+
+		operationDetail, err_op = client_op.FetchOperationDetail(operation)
+	}
+
+	if operationDetail.CurrentState != "finished"{
+		return diag.Errorf("Failed creating the database for operation %s", operation)
+	}
+
+	d.SetId(operationDetail.DatabaseId)
+	
 	return diags	
 }
 
