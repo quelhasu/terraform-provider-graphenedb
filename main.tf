@@ -53,5 +53,10 @@ resource "graphenedb_plugin" "add_apoc" {
     graphenedb_database.creation
   ]
 }
+resource "graphenedb_database_restart" "restart_database" {
+  database_id = graphenedb_database.creation.id
 
-
+  depends_on = [
+    graphenedb_database.creation
+  ]
+}
