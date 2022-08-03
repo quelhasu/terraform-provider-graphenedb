@@ -23,6 +23,7 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"graphenedb_database": resourceDatabase(),
+			"graphenedb_database_restart": resourceDatabaseRestart(),
 			"graphenedb_vpc": resourceVpc(),
 			"graphenedb_plugin": resourcePlugin(),
 		},

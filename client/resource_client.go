@@ -4,6 +4,7 @@ import "fmt"
 
 type ResourceClient interface {
 	CreateResource(requestBody interface{}, responseBody interface{}) error
+	RestartResource(requestPathId string, responseBody interface{}) error
 	CreateResourceWithPathExt(requestPathId string, requestBody interface{}, responseBody interface{}) error
 	ModifyResourceWithPathExt(requestPathId string, requestBody interface{}, responseBody interface{}) error
 	FetchResource(requestPathId string, responseBody interface{}) error
@@ -13,6 +14,27 @@ type DefaultResourceClient struct {
 	*AuthenticatedClient
 	ResourceDescription string
 	ResourceRootPath    string
+}
+
+
+func (c *DefaultResourceClient) RestartResource(requestPathExt string, responseBody interface{}) error {
+	path_w_id := fmt.Sprintf("%s/%s/restart", c.ResourceRootPath, requestPathExt)
+	request, err := c.newAuthenticatedPutRequest(path_w_id, nil)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.requestAndCheckStatus(fmt.Sprintf("create %s", c.ResourceDescription), request)
+	if err != nil {
+		return err
+	}
+
+	// 200 No response success, need 202 (Accepeted)
+	if response.StatusCode == 200 {
+		return nil
+	}
+
+	return unmarshalResponseBody(response, responseBody)
 }
 
 func (c *DefaultResourceClient) CreateResource(requestBody interface{}, responseBody interface{}) error {

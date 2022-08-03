@@ -14,9 +14,13 @@ type DatabaseSpec struct {
 	Plan    string `json:"plan"`
 	Vpc			string `json:"privateNetworkId"`
 }
-type DatabaseCreationDetail struct {
+type DatabaseDetail struct {
 	OperationID        string `json:"operation"`
 }
+type DatabaseRestartDetail struct {
+	OperationID	string `json:"operationId"`
+}
+
 type PluginSpec struct {
 	Name    string `json:"name"`
 	Kind string `json:"kind"`
@@ -56,7 +60,7 @@ func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClie
 	}
 }
 
-func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc string) (*DatabaseCreationDetail, error) {
+func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc string) (*DatabaseDetail, error) {
 	spec := DatabaseSpec{
 		Name:    name,
 		Version: version,
@@ -65,8 +69,18 @@ func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc
 		Vpc: vpc,
 	}
 
-	var dbCreationDetail DatabaseCreationDetail
+	var dbCreationDetail DatabaseDetail
 	if err := c.CreateResource(&spec, &dbCreationDetail); err != nil {
+		return nil, err
+	}
+
+	return &dbCreationDetail, nil
+}
+
+func (c *DatabasesClient) RestartDatabase(database_id string) (*DatabaseRestartDetail, error) {
+
+	var dbCreationDetail DatabaseRestartDetail
+	if err := c.RestartResource(database_id, &dbCreationDetail); err != nil {
 		return nil, err
 	}
 
