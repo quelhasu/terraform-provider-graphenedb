@@ -1,6 +1,9 @@
 package client
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 type DatabasesClient struct {
 	ResourceClient
@@ -14,9 +17,11 @@ type DatabaseSpec struct {
 	Plan    string `json:"plan"`
 	Vpc			string `json:"privateNetworkId"`
 }
+
 type DatabaseDetail struct {
 	OperationID        string `json:"operation"`
 }
+
 type DatabaseRestartDetail struct {
 	OperationID	string `json:"operationId"`
 }
@@ -37,8 +42,31 @@ type PluginDetail struct {
 }
 
 type StatusPluginDetail struct {}
+
 type StatusPluginSpec struct {
 	Status string `json:"status"`
+}
+
+type UpstreamDatabasePlanInfo struct {
+	PlanType string `json:"type"`
+}
+
+type UpstreamDatabaseInfo struct {
+	Id string `json:"id"`
+	Name string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+	Version string `json:"version"`
+	VersionEdition string `json:"versionEdition"`
+	VersionKey string `json:"versionKey"`
+	CurrentSize int64 `json:"currentSize"`
+	MaxSize int64 `json:"maxSize"`
+	Plan UpstreamDatabasePlanInfo `json:"plan"`
+	AwsRegion string `json:"awsRegion"`
+	PrivateNetworkId string `json:"privateNetworkId"`
+	BoltURL string `json:"boltURL"`
+	RestUrl string `json:"restUrl"`
+	BrowserUrl string `json:"browserUrl"`
+	MetricsURL string `json:"metricsURL"`
 }
 
 func (c *AuthenticatedClient) NewDatabasesClient(resourceClients ...ResourceClient) *DatabasesClient {
@@ -75,6 +103,20 @@ func (c *DatabasesClient) CreateDatabase(name, version, region, plan string, vpc
 	}
 
 	return &dbCreationDetail, nil
+}
+
+func (c *DatabasesClient) GetDatabaseInfo(ctx context.Context, id string) (*UpstreamDatabaseInfo, error) {
+
+	var upstreamDatabaseInfo UpstreamDatabaseInfo
+	err := c.GetResourceInfo(ctx, fmt.Sprintf("v1/databases/%s", id), &upstreamDatabaseInfo)
+	if err != nil {
+		apiError, ok := err.(UnexpectedStatusError)
+		if(ok && apiError.StatusCode == 404){
+				return nil, nil
+		}
+		return nil, err
+	}
+	return &upstreamDatabaseInfo, nil
 }
 
 func (c *DatabasesClient) RestartDatabase(database_id string) (*DatabaseRestartDetail, error) {

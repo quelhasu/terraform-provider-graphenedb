@@ -1,6 +1,9 @@
 package client
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 type ResourceClient interface {
 	CreateResource(requestBody interface{}, responseBody interface{}) error
@@ -8,6 +11,7 @@ type ResourceClient interface {
 	CreateResourceWithPathExt(requestPathId string, requestBody interface{}, responseBody interface{}) error
 	ModifyResourceWithPathExt(requestPathId string, requestBody interface{}, responseBody interface{}) error
 	FetchResource(requestPathId string, responseBody interface{}) error
+	GetResourceInfo(ctx context.Context, requestPath string, responseBody interface{}) error
 }
 
 type DefaultResourceClient struct {
@@ -29,7 +33,6 @@ func (c *DefaultResourceClient) RestartResource(requestPathExt string, responseB
 		return err
 	}
 
-	// 200 No response success, need 202 (Accepeted)
 	if response.StatusCode == 200 {
 		return nil
 	}
@@ -101,3 +104,16 @@ func (c *DefaultResourceClient) FetchResource(requestPathId string, responseBody
 	return unmarshalResponseBody(response, responseBody)
 }
 
+func (c *DefaultResourceClient) GetResourceInfo(ctx context.Context, requestPath string, responseBody interface{}) error {
+	
+	request, err := c.newAuthenticatedGetRequest(requestPath)
+	if err != nil {
+		return err
+	}
+	response, err := c.requestAndCheckStatusWithContext(ctx, fmt.Sprintf("read %s", c.ResourceDescription), request)
+	if err != nil {
+		return err
+	}
+	
+	return unmarshalResponseBody(response, responseBody)
+}

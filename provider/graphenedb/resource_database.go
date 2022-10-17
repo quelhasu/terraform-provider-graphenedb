@@ -2,9 +2,11 @@ package graphenedb
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -17,30 +19,27 @@ func resourceDatabase() *schema.Resource {
 		DeleteContext: resourceDatabaseDelete,
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
-
-			"version": &schema.Schema{
+			"version": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
-
-			"region": &schema.Schema{
+			"region": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
-
-			"plan": &schema.Schema{
+			"plan": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
-			"vpc_id": &schema.Schema{
+			"vpc_id": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
@@ -56,7 +55,7 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m inter
 
 	name, version, region, plan, vpc := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("vpc_id").(string)
 
-	log.Printf("Creating db with : ", name, version, region, plan, vpc)
+	log.Printf("Creating db with : name: %s, version: %s, region: %s, plan: %s, vpc: %s", name, version, region, plan, vpc)
 	client := m.(*GrapheneDBClient).NewDatabasesClient()
 	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
@@ -66,12 +65,12 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m inter
 	}
 
 	operation := database.OperationID
-	log.Printf("Fetch operation : ", operation)
+	log.Printf("Fetch operation: %s", operation)
 	client_op := m.(*GrapheneDBClient).NewOperationsClient()
 
 	operationDetail, err_op := client_op.FetchOperationDetail(operation)
 
-	for operationDetail.Stopped == false && err_op == nil  {
+	for !operationDetail.Stopped && err_op == nil  {
 		log.Println("Still fetching operation....")
 
 		if err_op != nil {
@@ -89,17 +88,31 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, m inter
 	}
 
 	d.SetId(operationDetail.DatabaseId)
-	
 	return diags	
 }
 
-func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// cli.Debug.Printf("Resource state: %#v", d.State())
+func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+	client := m.(*GrapheneDBClient).NewDatabasesClient()
+	database, err := client.GetDatabaseInfo(ctx, d.Id())
+
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	tflog.Warn(ctx, "DATABASE INFO",  map[string]interface{}{
+    "database": fmt.Sprintf("%+v", database),
+	})
+	if(database != nil) {
+		tflog.Warn(ctx, "DATABASE PLAN TYPE", map[string]interface{}{
+			"PlanType":database.Plan.PlanType,
+		})
+		d.Set("plan", database.Plan.PlanType)
+	} else{
+		d.SetId("")
+	}
 	return nil
 }
 
 func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return nil
 }
 

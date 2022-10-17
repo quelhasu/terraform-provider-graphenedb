@@ -17,7 +17,7 @@ func resourceDatabaseRestart() *schema.Resource {
 		DeleteContext: resourceDatabaseRestartDelete,
 
 		Schema: map[string]*schema.Schema{
-			"database_id": &schema.Schema{
+			"database_id": {
 				Type: schema.TypeString, 
 				Required: true,
 				ForceNew: false,
@@ -33,7 +33,7 @@ func resourceDatabaseRestartCreate(ctx context.Context, d *schema.ResourceData, 
 
 	database_id := d.Get("database_id").(string)
 
-	log.Printf("Restart the database identified by : ", database_id)
+	log.Printf("Restart the database identified by: %s", database_id)
 	client := m.(*GrapheneDBClient).NewDatabasesClient()
 	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
@@ -43,12 +43,12 @@ func resourceDatabaseRestartCreate(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	operation := database.OperationID
-	log.Printf("Fetch operation : ", operation)
+	log.Printf("Fetch operation: %s", operation)
 	client_op := m.(*GrapheneDBClient).NewOperationsClient()
 
 	operationDetail, err_op := client_op.FetchOperationDetail(operation)
 
-	for operationDetail.Stopped == false && err_op == nil  {
+	for !operationDetail.Stopped && err_op == nil  {
 		log.Println("Still fetching operation....")
 
 		if err_op != nil {

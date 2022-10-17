@@ -20,7 +20,6 @@ resource "graphenedb_vpc" "creation" {
   cidr   = "vpc_cidr"
 }
 
-
 resource "graphenedb_database" "creation" {
   name    = "db_name"
   version = "db_version"
@@ -43,6 +42,7 @@ resource "graphenedb_plugin" "add_gds" {
     graphenedb_database.creation
   ]
 }
+
 resource "graphenedb_plugin" "add_apoc" {
   name        = "apoc"
   kind        = "stored-procedure"
@@ -53,6 +53,7 @@ resource "graphenedb_plugin" "add_apoc" {
     graphenedb_database.creation
   ]
 }
+
 resource "graphenedb_database_restart" "restart_database" {
   database_id = graphenedb_database.creation.id
 

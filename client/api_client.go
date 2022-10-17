@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,10 +30,23 @@ func (c *apiClient) requestAndCheckStatus(description string, req *http.Request)
 		return nil, err
 	}
 
-	if 300 > rsp.StatusCode && rsp.StatusCode >= 200 {
+	if rsp.StatusCode >= 200 &&  rsp.StatusCode < 300 {
 		return rsp, nil
 	}
 
+	return nil, unexpectedStatusError(description, rsp)
+}
+
+
+func (c *apiClient) requestAndCheckStatusWithContext(ctx context.Context, description string, req *http.Request) (*http.Response, error) {
+	rsp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	
+	if rsp.StatusCode >= 200 && rsp.StatusCode < 300 {
+		return rsp, nil
+	}
 	return nil, unexpectedStatusError(description, rsp)
 }
 
@@ -82,10 +96,14 @@ func (c *apiClient) newRequest(method, path string, body interface{}) (*http.Req
 		c.apiEndpoint.ResolveReference(urlPath).String(),
 		marshalToReader(body),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	requestDump, err := httputil.DumpRequest(req, true)
 	if err != nil {
 		log.Println(err)
+		return nil, err
 	}
 	log.Println(string(requestDump))
 

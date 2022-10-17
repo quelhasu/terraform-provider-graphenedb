@@ -16,25 +16,25 @@ func resourcePlugin() *schema.Resource {
 		DeleteContext: resourcePluginDelete,
 
 		Schema: map[string]*schema.Schema{
-			"name": &schema.Schema{
+			"name": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
 			},
 
-			"kind": &schema.Schema{
+			"kind": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
 
-			"url": &schema.Schema{
+			"url": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
 			},
 
-			"database_id": &schema.Schema{
+			"database_id": {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: false,
@@ -50,7 +50,7 @@ func resourcePluginCreate(ctx context.Context, d *schema.ResourceData, m interfa
 
 	name, kind, url, database_id := d.Get("name").(string), d.Get("kind").(string), d.Get("url").(string), d.Get("database_id").(string)
 
-	log.Printf("Adding plugin with : ", name, kind, url, database_id)
+	log.Printf("Adding plugin with : name: %s, kind: %s, url: %s, database id: %s", name, kind, url, database_id)
 	client := m.(*GrapheneDBClient).NewDatabasesClient()
 	// cli.Debug.Printf("Resource state: %s %s %s %s %#v", name, version, awsRegion, plan, client)
 
@@ -60,7 +60,7 @@ func resourcePluginCreate(ctx context.Context, d *schema.ResourceData, m interfa
 	}
 
 	plugin_id := plugin.Detail.Id
-	log.Printf("Enable plugin : ", plugin_id)
+	log.Printf("Enable plugin: %s", plugin_id)
 
 	plugin_status, err_en := client.ChangePluginStatus(database_id, plugin_id, "enabled")
 

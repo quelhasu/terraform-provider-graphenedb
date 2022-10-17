@@ -28,28 +28,25 @@ func Provider() *schema.Provider {
 			"graphenedb_plugin": resourcePlugin(),
 		},
 		Schema: map[string]*schema.Schema{
-			"user": &schema.Schema{
+			"user": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("GRAPHENEDB_USER", nil),
 				Description: "The user name for GrapheneDB API operations.",
 			},
-
-			"password": &schema.Schema{
+			"password": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("GRAPHENEDB_PASSWORD", nil),
 				Description: "The user password for GrapheneDB API operations.",
 			},
-
-			"endpoint": &schema.Schema{
+			"endpoint": {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("GRAPHENEDB_ENDPOINT", nil),
 				Description: "The HTTP endpoint for GrapheneDB API operations.",
 			},
 		},
-
 		ConfigureFunc: providerConfigure,
 	}
 }
@@ -57,13 +54,13 @@ func Provider() *schema.Provider {
 func (c *Config) Client() (*GrapheneDBClient, error) {
 	uri, err := url.ParseRequestURI(c.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid endpoint URI: %s", err)
+		return nil, fmt.Errorf("%s: %w", "Invalid endpoint URI", err)
 	}
 
 	client := cli.NewClient(c.User, c.Password, uri)
 	authenticatedClient, err := client.Authenticate()
 	if err != nil {
-		return nil, fmt.Errorf("Authentication failed: %s", err)
+		return nil, fmt.Errorf("%s: %w", "Authentication failed", err)
 	}
 
 	grapheneDBClient := &GrapheneDBClient{
