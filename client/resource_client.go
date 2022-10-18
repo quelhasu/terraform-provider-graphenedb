@@ -13,6 +13,7 @@ type ResourceClient interface {
 	FetchResource(requestPathId string, responseBody interface{}) error
 	GetResourceInfo(ctx context.Context, requestPath string, responseBody interface{}) error
 	ModifyResource(ctx context.Context,  requestPath string, requestBody interface{}, responseBody interface{}) error
+	DeleteResource(ctx context.Context,  requestPath string, requestBody interface{}, responseBody interface{}) error
 }
 
 type DefaultResourceClient struct {
@@ -121,6 +122,25 @@ func (c *DefaultResourceClient) GetResourceInfo(ctx context.Context, requestPath
 
 func (c *DefaultResourceClient) ModifyResource(ctx context.Context,  requestPath string, requestBody interface{}, responseBody interface{}) error {
 	request, err := c.newAuthenticatedPutRequest(requestPath, requestBody)
+	if err != nil {
+		return err
+	}
+
+	response, err := c.requestAndCheckStatus(fmt.Sprintf("Upgrade resource info %s", requestPath), request)
+	if err != nil {
+		return err
+	}
+
+	// 204 No Content success
+	if response.StatusCode == 204 {
+		return nil
+	}
+
+	return unmarshalResponseBody(response, responseBody)
+}
+
+func (c *DefaultResourceClient) DeleteResource(ctx context.Context,  requestPath string, requestBody interface{}, responseBody interface{}) error {
+	request, err := c.newAuthenticatedDeleteRequest(requestPath, requestBody)
 	if err != nil {
 		return err
 	}

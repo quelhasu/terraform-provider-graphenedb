@@ -168,6 +168,11 @@ func (c *DatabasesClient) AddPlugin(name string, kind string, url string, databa
 	return &pluginDetail, nil
 }
 
+func (c *DatabasesClient) DeletePlugin(ctx context.Context, databaseId string, pluginId string) error {
+	return c.DeleteResource(ctx, fmt.Sprintf("v1/databases/%s/plugins/%s", databaseId, pluginId), nil, nil)
+}
+
+
 func (c *DatabasesClient) ChangePluginStatus(database_id string, plugin_id string, status string) (*StatusPluginDetail, error) {
 	spec := StatusPluginSpec{
 		Status:    status,

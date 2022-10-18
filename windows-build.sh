@@ -1,7 +1,7 @@
 HOSTNAME=terraform.localhost.com
 NAMESPACE=quelhasu
 NAME=graphenedb
-VERSION=1.1.112
+VERSION=1.1.124
 OS_ARCH=amd64
 OS=windows
 BINARY=terraform-provider-${NAME}_v${VERSION}_${OS}_${OS_ARCH}

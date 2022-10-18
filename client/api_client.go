@@ -73,7 +73,17 @@ func (c *apiClient) newPutRequest(path string, body interface{}, api_key string)
 
 	return request, nil
 }
+func (c *apiClient) newDeleteRequest(path string, body interface{}, api_key string) (*http.Request, error) {
+	request, err := c.newRequest("DELETE", path, body)
+	if err != nil {
+		return nil, err
+	}
 
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("api_key", api_key)
+
+	return request, nil
+}
 func (c *apiClient) newGetRequest(path string, api_key string) (*http.Request, error) {
 	request, err := c.newRequest("GET", path, nil)
 	if err != nil {
