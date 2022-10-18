@@ -18,8 +18,16 @@ type DatabaseSpec struct {
 	Vpc			string `json:"privateNetworkId"`
 }
 
+type UpgradeDatabaseSpec struct {
+	Plan    string `json:"plan"`
+}
+
 type DatabaseDetail struct {
 	OperationID        string `json:"operation"`
+}
+
+type DatabaseUpgradeResult struct {
+	OperationID	string `json:"operationId"`
 }
 
 type DatabaseRestartDetail struct {
@@ -117,6 +125,19 @@ func (c *DatabasesClient) GetDatabaseInfo(ctx context.Context, id string) (*Upst
 		return nil, err
 	}
 	return &upstreamDatabaseInfo, nil
+}
+
+func (c *DatabasesClient) UpgradeDatabaseInfo(ctx context.Context, plan string, id string) (*DatabaseUpgradeResult, error) {
+	spec := UpgradeDatabaseSpec{
+		Plan:    plan,
+	}
+
+	var dbCreationDetail DatabaseUpgradeResult
+	if err := c.ModifyResource(ctx, fmt.Sprintf("v1/databases/%s/upgrade", id), &spec, &dbCreationDetail); err != nil {
+		return nil, err
+	}
+
+	return &dbCreationDetail, nil
 }
 
 func (c *DatabasesClient) RestartDatabase(database_id string) (*DatabaseRestartDetail, error) {
