@@ -5,6 +5,52 @@ import (
 	"fmt"
 )
 
+////////////////////////////////// NEW NEW NEW NEW /////////////////////////////////////////////
+type GrapheneDbDatabase struct {
+	Name string
+	Version string 
+	Region string 
+	Plan string 
+	VpcID string
+	Plugins []DatabasePlugins
+}
+
+type DatabasePlugins struct {
+	Name string
+	Kind string 
+	Url string 
+}
+
+
+func (c *DatabasesClient) NewCreateDatabase(name, version, region, plan string, vpc string) (*DatabaseDetail, error) {
+	spec := DatabaseSpec{
+		Name:    name,
+		Version: version,
+		AwsRegion:  region,
+		Plan:    plan,
+		Vpc: vpc,
+	}
+
+	var dbCreationDetail DatabaseDetail
+	if err := c.CreateResource(&spec, &dbCreationDetail); err != nil {
+		return nil, err
+	}
+
+	return &dbCreationDetail, nil
+}
+
+
+
+
+
+////////////////////////////////// OLD OLD OLD OLD /////////////////////////////////////////////
+
+
+
+
+
+
+
 type DatabasesClient struct {
 	ResourceClient
 	ResourcePluginsPath string
@@ -171,7 +217,6 @@ func (c *DatabasesClient) AddPlugin(name string, kind string, url string, databa
 func (c *DatabasesClient) DeletePlugin(ctx context.Context, databaseId string, pluginId string) error {
 	return c.DeleteResource(ctx, fmt.Sprintf("v1/databases/%s/plugins/%s", databaseId, pluginId), nil, nil)
 }
-
 
 func (c *DatabasesClient) ChangePluginStatus(database_id string, plugin_id string, status string) (*StatusPluginDetail, error) {
 	spec := StatusPluginSpec{

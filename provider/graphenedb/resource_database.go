@@ -2,13 +2,11 @@ package graphenedb
 
 import (
 	"context"
-	"errors"
-	"log"
+	"fmt"
 
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/quelhasu/terraform-provider-graphenedb/client"
+	graphendbclient "github.com/quelhasu/terraform-provider-graphenedb/graphendb-client"
 )
 
 func resourceDatabase() *schema.Resource {
@@ -44,118 +42,233 @@ func resourceDatabase() *schema.Resource {
 				Required: true,
 				ForceNew: false,
 			},
+			"plugins": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"plugin_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: true,
+						},
+						"kind": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: false,
+						},
+						"url": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: false,
+						},
+					},
+				},
+			},
 		},
 	}
 }
 
 func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	name, version, region, plan, vpc := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("vpc_id").(string)
+	var diags diag.Diagnostics
 
-	log.Printf("Creating db with : name: %s, version: %s, region: %s, plan: %s, vpc: %s", name, version, region, plan, vpc)
-	client := meta.(*GrapheneDBClient).NewDatabasesClient()
-
-	database, err := client.CreateDatabase(name, version, region, plan, vpc)
+	databaseId, err := meta.(*graphendbclient.RestApiClient).CreateDatabase(ctx, extractDatabaseInfoFromSchema(ctx, d))
 	if err != nil {
-		return diag.Errorf("Error creating database %s: %s", name, err)
-	}
-	operationClient := meta.(*GrapheneDBClient).NewOperationsClient()
-	databaseId, err := FetchDatabaseAsyncOperationStatus(database.OperationID, operationClient)
-	if err != nil {
-		return diag.Errorf("Error creating database %s: %s", name, err)
+		return diag.FromErr(err)
 	}
 	d.SetId(databaseId)
 
-	return nil
+	plugins := extractPluginInfoFromSchema(ctx, d)
+	for _, plugin := range plugins {
+		pluginCreateResult, err := meta.(*graphendbclient.RestApiClient).CreatePlugin(ctx, databaseId, plugin)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		err = meta.(*graphendbclient.RestApiClient).ChangePluginStatus(ctx, databaseId, pluginCreateResult.Detail.Id, graphendbclient.PluginEnabledStatus)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	if(len(plugins) > 0) {
+		err = meta.(*graphendbclient.RestApiClient).RestartDatabase(ctx, databaseId)
+		if err != nil {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Cannot restart the database",
+				Detail:   fmt.Sprintf("The database ID is %s", databaseId),
+			})
+			return diags
+		}
+	}
+
+	return resourceDatabaseRead(ctx, d, meta)
 }
 
 func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	resourceData, err := getDatabaseResourceAttributesById(ctx,  meta.(*GrapheneDBClient).NewDatabasesClient(), d.Id())
-	if(err != nil){
+
+	var diags diag.Diagnostics
+
+	databaseInfo, err := meta.(*graphendbclient.RestApiClient).GetUpstreamDatabaseInfo(ctx, d.Id())
+	if err != nil {
 		return diag.FromErr(err)
 	}
-	if resourceData == nil {
-		tflog.Warn(ctx, "Database not exists upstream and new one must be created")
+	
+	if(databaseInfo == nil){
 		d.SetId("")
-		return nil
+		return diags
 	}
-	err = AttributesToResourceData(resourceData, d)
-	if  resourceData == nil {
+	err = AttributesToResourceData(flattenDatabase(ctx, databaseInfo, d), d)
+	if err != nil {
 		return diag.FromErr(err)
 	}
-	return nil
+
+	return diags
 }
 
 func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	name, version, region, plan, vpc := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("vpc_id").(string)
-	tflog.Warn(ctx, "NEW STATE", map[string]interface{}{
-		"name": name, 
-		"version": version, 
-		"region": region, 
-		"plan": plan,
-		"vpc_id": vpc,
-	})
+	var diags diag.Diagnostics
+	databaseId := d.Id()
 
-
-	databaseClient := meta.(*GrapheneDBClient).NewDatabasesClient()
-	database, err := databaseClient.GetDatabaseInfo(ctx, d.Id())
-
-	if err != nil {
-		return diag.FromErr(err)
-	}
-	if(database != nil) {
-		name, version, region, _, vpc := d.Get("name").(string), d.Get("version").(string), d.Get("region").(string), d.Get("plan").(string), d.Get("vpc_id").(string)
-		if(name != database.Name){
-			return diag.FromErr(errors.New("name of database cannot be updated"))
+	if d.HasChanges("plugins") {
+		upstreamDatabaseInfo, err := meta.(*graphendbclient.RestApiClient).GetUpstreamDatabaseInfo(ctx, databaseId)
+		if err != nil {
+			return diag.FromErr(err)
 		}
-		if(version != database.VersionKey){
-			return diag.FromErr(errors.New("version of database cannot be updated"))
+		if(len(upstreamDatabaseInfo.Plugins) > 0){
+			for _, plugin := range upstreamDatabaseInfo.Plugins {
+				err = meta.(*graphendbclient.RestApiClient).ChangePluginStatus(ctx, databaseId, plugin.Id, graphendbclient.PluginDisabledStatus)
+				if err != nil {
+					return diag.FromErr(err)
+				}
+				err = meta.(*graphendbclient.RestApiClient).DeletePlugin(ctx, databaseId, plugin.Id)
+				if err != nil {
+					return diag.FromErr(err)
+				}
+			}
 		}
-		if(region != database.AwsRegion){
-			return diag.FromErr(errors.New("region of database cannot be updated"))
+		plugins := extractPluginInfoFromSchema(ctx, d)
+		for _, plugin := range plugins {
+			pluginCreateResult, err := meta.(*graphendbclient.RestApiClient).CreatePlugin(ctx, databaseId, plugin)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+			err = meta.(*graphendbclient.RestApiClient).ChangePluginStatus(ctx, databaseId, pluginCreateResult.Detail.Id, graphendbclient.PluginEnabledStatus)
+			if err != nil {
+				return diag.FromErr(err)
+			}
 		}
-		if(vpc != database.PrivateNetworkId){
-			return diag.FromErr(errors.New("network id of database cannot be updated"))
-		}
-	} else {
-		return diag.FromErr(errors.New("database now found"))
-	}
-	updateResult, err := databaseClient.UpgradeDatabaseInfo(ctx, plan, d.Id())
-	if(err != nil){
-		return diag.FromErr(err)
 	}
 
-
-	operationClient := meta.(*GrapheneDBClient).NewOperationsClient()
-	databaseId, err := FetchDatabaseAsyncOperationStatus(updateResult.OperationID, operationClient)
-	if err != nil {
-		return diag.Errorf("Error updating database %s: %s", name, err)
+	if d.HasChange("plan") {
+		databaseId, err := meta.(*graphendbclient.RestApiClient).UpdateDatabase(ctx, databaseId, graphendbclient.DatabaseUpgradeInfo {
+			Plan: d.Get("plan").(string),
+		})
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.SetId(databaseId)
 	}
-	d.SetId(databaseId)
 
-	return nil
+	databaseId = d.Id()
+	if d.HasChanges("plugins") && !d.HasChange("plan") {
+		err := meta.(*graphendbclient.RestApiClient).RestartDatabase(ctx, databaseId)
+		if err != nil {
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Warning,
+				Summary:  "Cannot restart the database",
+				Detail:   fmt.Sprintf("The database ID is %s", databaseId),
+			})
+			return diags
+		}
+	}
+	return resourceDatabaseRead(ctx, d, meta)
 }
 
 func resourceDatabaseDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// cli.Debug.Printf("Resource state: %#v", d.State())
 	return diag.Errorf("Database delete is called")
-	return nil
 }
 
-func getDatabaseResourceAttributesById(ctx context.Context, client *client.DatabasesClient, databaseId string) (map[string]interface{}, error) {
-	database, err := client.GetDatabaseInfo(ctx, databaseId)
-	if err != nil {
-		return nil, err
-	}
-	if(database == nil){
-		return nil, nil
-	}
+
+
+
+func flattenDatabase(ctx context.Context, database *graphendbclient.UpstreamDatabaseInfo, d *schema.ResourceData ) map[string]interface{} {
 	c := make(map[string]interface{})
-  c["id"] = database.Id
+  // c["id"] = database.Id
 	c["plan"]= database.Plan.PlanType
 	c["region"]= database.AwsRegion
 	c["vpc_id"]= database.PrivateNetworkId
 	c["version"]= database.VersionKey
 	c["name"] = database.Name
-	tflog.Warn(ctx, "UPSTREAM DATABASE STATE",  c )
-  return c, nil
+	c["plugins"] = flattenPlugins(ctx , database, d)
+	//tflog.Warn(ctx, "UPSTREAM DATABASE STATE",  c )
+  return c
 }
+
+func flattenPlugins(ctx context.Context, database *graphendbclient.UpstreamDatabaseInfo, d *schema.ResourceData) []interface{} {
+	countOfPlugins := len(database.Plugins)
+	if(countOfPlugins >= 0){
+		allPlugins := extractPluginInfoFromSchema(ctx, d)
+		allPluginsMap := make([]interface{}, countOfPlugins)
+		for i, plugin := range database.Plugins {
+			pluginUrl := ""
+			currentPluginFromSchema := getPluginByName(ctx, allPlugins, plugin.Name)
+			if(currentPluginFromSchema != nil){
+				pluginUrl = currentPluginFromSchema.Name
+			}
+			currentPluginMap := make(map[string]interface{})
+			currentPluginMap["plugin_id"] = plugin.Id
+			currentPluginMap["name"] = plugin.Name
+			currentPluginMap["kind"] = plugin.Type
+			currentPluginMap["url"] = pluginUrl
+			allPluginsMap[i] = currentPluginMap
+		}
+		return allPluginsMap
+	}
+	return make([]interface{}, 0)
+}
+
+func extractDatabaseInfoFromSchema(ctx context.Context, d *schema.ResourceData) graphendbclient.DatabaseInfo {
+	return graphendbclient.DatabaseInfo {
+		Name: d.Get("name").(string),
+		Version: d.Get("version").(string),
+		AwsRegion: d.Get("region").(string),
+		Plan: d.Get("plan").(string),
+		Vpc: d.Get("vpc_id").(string),
+	}
+}
+
+func extractPluginInfoFromSchema(ctx context.Context, d *schema.ResourceData) []graphendbclient.PluginInfo {
+	if d.Get("plugins") != nil {
+	inputPlugins := d.Get("plugins").([]interface{})
+	databasePlugins := []graphendbclient.PluginInfo{}
+		for _, inputPlugin := range inputPlugins {
+			current := inputPlugin.(map[string]interface{})
+			oi := graphendbclient.PluginInfo{
+				Name: current["name"].(string),
+				Kind: current["kind"].(string),
+				Url:  current["url"].(string),
+			}
+			databasePlugins = append(databasePlugins, oi)
+		}
+		return databasePlugins
+	}
+	return nil
+}
+
+func getPluginByName(ctx context.Context, allPlugins []graphendbclient.PluginInfo, pluginName string) *graphendbclient.PluginInfo {
+	if(len(allPlugins) > 0){
+		for _, plugin := range allPlugins {
+			if(plugin.Name == pluginName ){
+				return &plugin
+			}
+		}
+	}
+	return nil
+}
+
+
