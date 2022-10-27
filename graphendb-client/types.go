@@ -30,8 +30,12 @@ type DatabaseUpgradeInfo struct {
 	Plan string `json:"plan"`
 }
 
-type DatabaseAsyncOperationResult struct {
+type DatabaseCreateResult struct {
 	OperationID string `json:"operation"`
+}
+
+type DatabaseUpdateResult struct {
+	OperationID string `json:"operationId"`
 }
 
 type AsyncOperationFetchResult struct {
@@ -64,7 +68,7 @@ type UpstreamDatabaseInfo struct {
 		Id        string `json:"id"`
 		Name      string `json:"name"`
 		CreatedAt string `json:"createdAt"`
-		Enabled   string `json:"enabled"`
+		Enabled   bool   `json:"enabled"`
 		Type      string `json:"type"`
 	} `json:"plugins"`
 }

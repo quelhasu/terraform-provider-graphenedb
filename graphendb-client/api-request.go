@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 func (client *RestApiClient) CreateVPC(ctx context.Context, vpcInfo VpcInfo) (*VpcCreateResult, error) {
@@ -30,13 +32,13 @@ func (client *RestApiClient) DeleteVPC(ctx context.Context, vpcId string) error 
 func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo DatabaseInfo) (string, error) {
 	response, err := client.ApiClient.R().
 		SetBody(databaseInfo).
-		SetResult(&DatabaseAsyncOperationResult{}).
+		SetResult(&DatabaseCreateResult{}).
 		Post("/v1/databases")
 	if(err != nil){
 		return "", err
 	}
-	result := response.Result().(*DatabaseAsyncOperationResult)
-	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(result.OperationID)
+	result := response.Result().(*DatabaseCreateResult)
+	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
 	if(err != nil) {
 		return "", err
 	}
@@ -49,13 +51,13 @@ func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId stri
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
 		}).
-		SetResult(&DatabaseAsyncOperationResult{}).
+		SetResult(&DatabaseUpdateResult{}).
 		Put("v1/databases/{databaseId}/upgrade")
 	if(err != nil){
 		return "", err
 	}
-	result := response.Result().(*DatabaseAsyncOperationResult)
-	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(result.OperationID)
+	result := response.Result().(*DatabaseUpdateResult)
+	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
 	if(err != nil) {
 		return "", err
 	}
@@ -89,7 +91,10 @@ func  (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId st
 		return err
 	}
 	result := response.Result().(*DatabaseRestartResult)
-	_, err = client.FetchDatabaseAsyncOperationStatus(result.OperationID)
+	tflog.Debug(ctx, "RESTART API CALL RESULT",  map[string]interface{}{
+		"OperationId": result.OperationID,
+	})
+	_, err = client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
 	if(err != nil) {
 		return err
 	}
@@ -112,13 +117,19 @@ func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string
 }
 
 func (client *RestApiClient) ChangePluginStatus(ctx context.Context, databaseId string, pluginId string, status PluginStatus) error {
-	_, err := client.ApiClient.R().
+	response, err := client.ApiClient.R().
 		SetBody(PluginStatusInfo{Status: string(status)}).
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
 			"pluginId": pluginId,
 		}).
 		Put("/v1/databases/{databaseId}/plugins/{pluginId}")
+	tflog.Debug(ctx, "CHANGE STATUS OF PLUGIN API CALL",  map[string]interface{}{
+		"databaseId": databaseId,
+		"pluginId": pluginId,
+		"status": string(status),
+		"responseStatus": response.StatusCode(),
+	})
 	return err
 }
 
@@ -133,7 +144,7 @@ func (client *RestApiClient) DeletePlugin(ctx context.Context, databaseId string
 }
 
 
-func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(operationId string) (*AsyncOperationFetchResult, error) {
+func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(ctx context.Context, operationId string) (*AsyncOperationFetchResult, error) {
 	var result *AsyncOperationFetchResult;
 	for {
 		response, err := client.ApiClient.R().
@@ -146,6 +157,13 @@ func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(operationId strin
 			return nil, err
 		}
 		result = response.Result().(*AsyncOperationFetchResult)
+		tflog.Debug(ctx, "FETCH ASYNC OPERATION STATUS API CALL",  map[string]interface{}{
+			"Id": result.Id,
+			"DatabaseId": result.DatabaseId,
+			"Description": result.Description,
+			"CurrentState": result.CurrentState,
+			"Stopped": result.Stopped,
+		})
 		if(result.Stopped){
 			break;
 		}
