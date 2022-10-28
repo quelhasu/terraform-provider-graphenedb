@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -16,16 +17,23 @@ func (client *RestApiClient) CreateVPC(ctx context.Context, vpcInfo VpcInfo) (*V
 	if(err != nil){
 		return nil, err
 	}
+	err = checkResponseAndReturnError(response)
+	if(err != nil){
+		return nil, err
+	}
 	return response.Result().(*VpcCreateResult), nil
 }
 
 func (client *RestApiClient) DeleteVPC(ctx context.Context, vpcId string) error {
-	_, err := client.ApiClient.R().
+	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"privateNetworkId": vpcId,
 		}).
 		Delete("/v1/networks/{privateNetworkId}")
-	return err
+	if(err != nil){
+		return err
+	}
+	return checkResponseAndReturnError(response)
 }
 
 
@@ -34,6 +42,10 @@ func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo Da
 		SetBody(databaseInfo).
 		SetResult(&DatabaseCreateResult{}).
 		Post("/v1/databases")
+	if(err != nil){
+		return "", err
+	}
+	err = checkResponseAndReturnError(response)
 	if(err != nil){
 		return "", err
 	}
@@ -56,6 +68,10 @@ func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId stri
 	if(err != nil){
 		return "", err
 	}
+	err = checkResponseAndReturnError(response)
+	if(err != nil){
+		return "", err
+	}
 	result := response.Result().(*DatabaseUpdateResult)
 	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
 	if(err != nil) {
@@ -71,10 +87,14 @@ func (client *RestApiClient) GetUpstreamDatabaseInfo(ctx context.Context, databa
 		}).
 		SetResult(&UpstreamDatabaseInfo{}).
 		Get("/v1/databases/{databaseId}")
-	if(response != nil && response.StatusCode() == 404) {
+	if(response.StatusCode() == 404) {
 		return nil, nil
 	}
 	if(err != nil) {
+		return nil, err
+	}
+	err = checkResponseAndReturnError(response)
+	if(err != nil){
 		return nil, err
 	}
 	return response.Result().(*UpstreamDatabaseInfo), nil
@@ -88,6 +108,10 @@ func  (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId st
 		SetResult(&DatabaseRestartResult{}).
 		Put("/v1/databases/{databaseId}/restart")
 	if(err != nil) {
+		return err
+	}
+	err = checkResponseAndReturnError(response)
+	if(err != nil){
 		return err
 	}
 	result := response.Result().(*DatabaseRestartResult)
@@ -113,6 +137,18 @@ func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string
 	if(err != nil){
 		return nil, err
 	}
+	tflog.Debug(ctx, "CREATE PLUGIN IS CALLED",  map[string]interface{}{
+		"DatabaseId": databaseId,
+		"Kind": pluginInfo.Kind,
+		"Url": pluginInfo.Url,
+		"Name":  pluginInfo.Name,
+		"Status": response.Status(),
+		"Response": fmt.Sprintf("%+v", response),
+	})
+	err = checkResponseAndReturnError(response)
+	if(err != nil){
+		return nil, err
+	}
 	return response.Result().(*PluginCreateResult), nil
 }
 
@@ -130,19 +166,24 @@ func (client *RestApiClient) ChangePluginStatus(ctx context.Context, databaseId 
 		"status": string(status),
 		"responseStatus": response.StatusCode(),
 	})
-	return err
+	if(err != nil){
+		return err
+	}
+	return checkResponseAndReturnError(response)
 }
 
 func (client *RestApiClient) DeletePlugin(ctx context.Context, databaseId string, pluginId string) error {
-	_, err := client.ApiClient.R().
+	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
 			"pluginId": pluginId,
 		}).
 		Delete("/v1/databases/{databaseId}/plugins/{pluginId}")
-	return err
+	if(err != nil){
+		return err
+	}
+	return checkResponseAndReturnError(response)
 }
-
 
 func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(ctx context.Context, operationId string) (*AsyncOperationFetchResult, error) {
 	var result *AsyncOperationFetchResult;
@@ -175,4 +216,11 @@ func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(ctx context.Conte
 	}
 	
 	return result, nil;
+}
+
+func checkResponseAndReturnError(response *resty.Response) error {
+	if response.StatusCode() < 200 || response.StatusCode() > 299 {
+		return fmt.Errorf("Error happened. Status code is %s and response body is %+v", response.StatusCode(), response)
+	}
+	return nil
 }

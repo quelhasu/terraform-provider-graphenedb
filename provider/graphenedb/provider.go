@@ -2,13 +2,9 @@ package graphenedb
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	cli "github.com/quelhasu/terraform-provider-graphenedb/client"
 	graphendbclient "github.com/quelhasu/terraform-provider-graphenedb/graphendb-client"
 )
 
-type GrapheneDBClient struct {
-	*cli.AuthenticatedClient
-}
 
 type Config struct {
 	ApiKey string
