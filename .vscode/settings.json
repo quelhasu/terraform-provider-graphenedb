@@ -13,9 +13,6 @@
   "[terraform]": {
     "editor.defaultFormatter": "hashicorp.terraform"
   },
-  "terraform-ls.experimentalFeatures": {
-    "validateOnSave": true
-  },
   "yaml.customTags": [
     "!And",
     "!And sequence",
@@ -60,7 +57,16 @@
   "eslint.workingDirectories": ["src"],
   "eslint.alwaysShowStatus": true,
   "eslint.validate": ["typescript", "javascript"],
-  "cSpell.words": ["Expirable", "SETI"],
+  "cSpell.words": [
+    "Expirable",
+    "graphen",
+    "graphendbclient",
+    "graphenedb",
+    "quelhasu",
+    "Resty",
+    "SETI",
+    "tflog"
+  ],
   "[shellscript]": {
     "editor.defaultFormatter": "foxundermoon.shell-format"
   },
@@ -72,5 +78,6 @@
   },
   "[dotenv]": {
     "editor.defaultFormatter": "foxundermoon.shell-format"
-  }
+  },
+  "terraform.experimentalFeatures.validateOnSave": true
 }
