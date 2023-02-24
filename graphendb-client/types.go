@@ -1,13 +1,58 @@
 package graphendbclient
 
-type VpcInfo struct {
-	Label     string `json:"label"`
-	AwsRegion string `json:"awsRegion"`
-	CidrBlock string `json:"cidrBlock"`
+type EnvironmentInfo struct {
+	Label          string `json:"label"`
+	OrganizationId string `json:"organizationId"`
+	GrantType      string `json:"grantType"`
+	Region         string `json:"region"`
+	Cidr           string `json:"cidr"`
 }
 
-type VpcCreateResult struct {
-	Id string `json:"id"`
+type EnvironmentCreateResult struct {
+	Id             string        `json:"id"`
+	Label          string        `json:"label"`
+	OrganizationId string        `json:"organizationId"`
+	GrantType      string        `json:"grantType"`
+	Region         string        `json:"region"`
+	Cidr           string        `json:"cidr"`
+	CreatedAt      string        `json:"createdAt"`
+	VpcPeers       []VpcPeer     `json:"vpcPeers"`
+	NetworkRules   []NetworkRule `json:"networkRules"`
+	StoppedAt      string        `json:"stoppedAt"`
+}
+
+type VpcPeer struct {
+	Id                  string   `json:"id"`
+	Label               string   `json:"label"`
+	PeeringConnectionId string   `json:"peeringConnectionId"`
+	AwsAccountId        string   `json:"awsAccountId"`
+	VpcId               string   `json:"vpcId"`
+	Cidrs               []string `json:"cidrs"`
+	Status              string   `json:"status"`
+}
+
+type NetworkRule struct {
+	Label     string `json:"label"`
+	Id        string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+	IpRange   string `json:"ipRange"`
+}
+
+type VpcPeeringInfo struct {
+	Label         string `json:"label"`
+	AwsAccountId  string `json:"awsAccountId"`
+	VpcId         string `json:"vpcId"`
+	PeerVpcRegion string `json:"peerVpcRegion"`
+}
+
+type VpcPeeringCreateResult struct {
+	ID                  string   `json:"id"`
+	Label               string   `json:"label"`
+	PeeringConnectionID string   `json:"peeringConnectionId"`
+	AWSAccountID        string   `json:"awsAccountId"`
+	VPCID               string   `json:"vpcId"`
+	CIDRs               []string `json:"cidrs"`
+	Status              string   `json:"status"`
 }
 
 // type DatabaseInfo struct {

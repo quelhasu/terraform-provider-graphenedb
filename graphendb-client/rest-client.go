@@ -18,20 +18,20 @@ type RestApiClient struct {
 	ApiClient      *resty.Client
 }
 
-func NewApiClient(endpoint string, client_id string, client_secret string, environement_id string) (*RestApiClient, error) {
+func NewApiClient(environment_id string, client_id string, client_secret string) (*RestApiClient, error) {
 
 	client := resty.New()
 	client.SetHeader("Content-Type", "application/json")
 	client.SetHeader("Accept", "*/*")
-	client.SetBaseURL(endpoint)
+	client.SetBaseURL("https://api.db.graphenedb.com")
 
 	apiClient := &RestApiClient{
-		BaseUrl:        endpoint,
-		EnvironementId: environement_id,
+		BaseUrl:        "https://api.db.graphenedb.com",
 		ClientId:       client_id,
 		ClientSecret:   client_secret,
 		BearerToken:    "",
 		ApiClient:      client,
+		EnvironementId: environment_id,
 	}
 
 	if err := apiClient.GetBearerToken(); err != nil {
@@ -52,14 +52,13 @@ func (c *RestApiClient) GetBearerToken() error {
 	response, err := c.ApiClient.R().SetFormData(map[string]string{
 		"client_id":     c.ClientId,
 		"client_secret": c.ClientSecret,
-		"grant_type":    "client_credentials",
 	}).Post("/organizations/oauth/token")
 	if err != nil {
 		return fmt.Errorf("failed to retrieve OAuth2 token: %v", err)
 	}
 
-	if response.StatusCode() != http.StatusOK {
-		return fmt.Errorf("failed to retrieve OAuth2 token: %v", response.Status())
+	if response.StatusCode() != http.StatusCreated {
+		return fmt.Errorf("failed to retrieve OAuth2 token (status err): %v", response.Status())
 	}
 
 	type TokenResponse struct {
