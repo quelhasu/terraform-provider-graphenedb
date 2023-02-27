@@ -80,7 +80,7 @@ func resourceVpcPeeringUpdate(ctx context.Context, d *schema.ResourceData, meta 
 
 func resourceVpcPeeringDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	err := meta.(*graphendbclient.RestApiClient).DeleteVPCPeering(ctx, d.Get("peering_id").(string))
+	err := meta.(*graphendbclient.RestApiClient).DeleteVpcPeering(ctx, d.Get("peering_id").(string))
 	if err != nil {
 		return diag.FromErr(err)
 	}

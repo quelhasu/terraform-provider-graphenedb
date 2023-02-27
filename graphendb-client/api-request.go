@@ -1,9 +1,11 @@
 package graphendbclient
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"time"
 
@@ -48,7 +50,7 @@ func (client *RestApiClient) CreateVpcPeering(ctx context.Context, vpcPeeringInf
 	return response.Result().(*VpcPeeringCreateResult), nil
 }
 
-func (client *RestApiClient) DeleteVPCPeering(ctx context.Context, vpcPeerId string) error {
+func (client *RestApiClient) DeleteVpcPeering(ctx context.Context, vpcPeerId string) error {
 	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"environmentId": client.EnvironementId,
@@ -61,11 +63,30 @@ func (client *RestApiClient) DeleteVPCPeering(ctx context.Context, vpcPeerId str
 	return checkResponseAndReturnError(response)
 }
 
-func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo DatabaseInfo) (string, error) {
+func (client *RestApiClient) DeleteDatabase(ctx context.Context, databaseId string, vendor string) error {
+	response, err := client.ApiClient.R().
+		SetPathParams(map[string]string{
+			"databaseId": databaseId,
+			"vendor":     vendor,
+		}).
+		Delete("/deployments/databases/{vendor}/{databaseId}")
+	if err != nil {
+		return err
+	}
+	return checkResponseAndReturnError(response)
+}
+
+func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo DatabaseInfo, vendor string) (string, error) {
+	databaseInfo.EnvironmentID = client.EnvironementId
+	jsonBytes, err := json.MarshalIndent(databaseInfo, "", "  ")
+	log.Printf("ola %+v\n", string(jsonBytes))
 	response, err := client.ApiClient.R().
 		SetBody(databaseInfo).
+		SetPathParams(map[string]string{
+			"vendor": vendor,
+		}).
 		SetResult(&DatabaseCreateResult{}).
-		Post("/v1/databases")
+		Post("/deployments/databases/{vendor}")
 	if err != nil {
 		return "", err
 	}
@@ -74,21 +95,25 @@ func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo Da
 		return "", err
 	}
 	result := response.Result().(*DatabaseCreateResult)
-	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
+
+	if result.Database.Status.State == "paused" {
+		_, err = client.FetchDatabaseAsyncStatus(ctx, result.Database.ID, vendor)
+	}
 	if err != nil {
 		return "", err
 	}
-	return asyncOperationInfo.DatabaseId, nil
+	return result.Database.ID, nil
 }
 
-func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId string, databaseInfo DatabaseUpgradeInfo) (string, error) {
+func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId string, databaseInfo DatabaseUpgradeInfo, vendor string) (string, error) {
 	response, err := client.ApiClient.R().
 		SetBody(databaseInfo).
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
+			"vendor":     vendor,
 		}).
 		SetResult(&DatabaseUpdateResult{}).
-		Put("v1/databases/{databaseId}/upgrade")
+		Put("/deployments/databases/{vendor}/{databaseId}/plan/change")
 	if err != nil {
 		return "", err
 	}
@@ -97,20 +122,21 @@ func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId stri
 		return "", err
 	}
 	result := response.Result().(*DatabaseUpdateResult)
-	asyncOperationInfo, err := client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
+	_, err = client.FetchDatabaseAsyncStatus(ctx, databaseId, vendor)
 	if err != nil {
 		return "", err
 	}
-	return asyncOperationInfo.DatabaseId, nil
+	return result.OperationID, nil
 }
 
-func (client *RestApiClient) GetUpstreamDatabaseInfo(ctx context.Context, databaseId string) (*UpstreamDatabaseInfo, error) {
+func (client *RestApiClient) GetUpstreamDatabaseInfo(ctx context.Context, databaseId string, vendor string) (*UpstreamDatabaseInfo, error) {
 	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
+			"vendor":     vendor,
 		}).
 		SetResult(&UpstreamDatabaseInfo{}).
-		Get("/v1/databases/{databaseId}")
+		Get("/deployments/databases/{vendor}/{databaseId}")
 	if response.StatusCode() == 404 {
 		return nil, nil
 	}
@@ -124,13 +150,36 @@ func (client *RestApiClient) GetUpstreamDatabaseInfo(ctx context.Context, databa
 	return response.Result().(*UpstreamDatabaseInfo), nil
 }
 
-func (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId string) error {
+func (client *RestApiClient) GetUpstreamDatabasePluginsInfo(ctx context.Context, databaseId string, vendor string) (*PluginListResponse, error) {
 	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
+			"vendor":     vendor,
+		}).
+		SetResult(&PluginListResponse{}).
+		Get("/deployments/databases/{vendor}/{databaseId}/plugins")
+	if response.StatusCode() == 404 {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = checkResponseAndReturnError(response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Result().(*PluginListResponse), nil
+}
+
+func (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId string, vendor string) error {
+	response, err := client.ApiClient.R().
+		SetBody(map[string]interface{}{"reset": true}).
+		SetPathParams(map[string]string{
+			"databaseId": databaseId,
+			"vendor":     vendor,
 		}).
 		SetResult(&DatabaseRestartResult{}).
-		Put("/v1/databases/{databaseId}/restart")
+		Post("/deployments/databases/{vendor}/{databaseId}/restart")
 	if err != nil {
 		return err
 	}
@@ -140,30 +189,33 @@ func (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId str
 	}
 	result := response.Result().(*DatabaseRestartResult)
 	tflog.Debug(ctx, "RESTART API CALL RESULT", map[string]interface{}{
-		"OperationId": result.OperationID,
+		"StationIds": result.StationIds,
 	})
-	_, err = client.FetchDatabaseAsyncOperationStatus(ctx, result.OperationID)
+	_, err = client.FetchDatabaseAsyncStatus(ctx, databaseId, vendor)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string, pluginInfo PluginInfo) (*PluginCreateResult, error) {
+func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string, pluginInfo PluginInfo, vendor string) (*PluginCreateResult, error) {
+	pluginBytes, _ := ioutil.ReadFile(pluginInfo.Url)
 	response, err := client.ApiClient.R().
-		SetBody(pluginInfo).
+		SetFileReader("file", pluginInfo.Name, bytes.NewReader(pluginBytes)).
+		SetFormData(map[string]string{
+			"name": pluginInfo.Name,
+		}).
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
+			"vendor":     vendor,
 		}).
 		SetResult(&PluginCreateResult{}).
-		Post("/v1/databases/{databaseId}/plugins")
+		Post("/deployments/databases/{vendor}/{databaseId}/plugins")
 	if err != nil {
 		return nil, err
 	}
 	tflog.Debug(ctx, "CREATE PLUGIN IS CALLED", map[string]interface{}{
 		"DatabaseId": databaseId,
-		"Kind":       pluginInfo.Kind,
-		"Url":        pluginInfo.Url,
 		"Name":       pluginInfo.Name,
 		"Status":     response.Status(),
 		"Response":   fmt.Sprintf("%+v", response),
@@ -175,67 +227,48 @@ func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string
 	return response.Result().(*PluginCreateResult), nil
 }
 
-func (client *RestApiClient) ChangePluginStatus(ctx context.Context, databaseId string, pluginId string, status PluginStatus) error {
-	response, err := client.ApiClient.R().
-		SetBody(PluginStatusInfo{Status: string(status)}).
-		SetPathParams(map[string]string{
-			"databaseId": databaseId,
-			"pluginId":   pluginId,
-		}).
-		Put("/v1/databases/{databaseId}/plugins/{pluginId}")
-	tflog.Debug(ctx, "CHANGE STATUS OF PLUGIN API CALL", map[string]interface{}{
-		"databaseId":     databaseId,
-		"pluginId":       pluginId,
-		"status":         string(status),
-		"responseStatus": response.StatusCode(),
-	})
-	if err != nil {
-		return err
-	}
-	return checkResponseAndReturnError(response)
-}
-
 func (client *RestApiClient) DeletePlugin(ctx context.Context, databaseId string, pluginId string) error {
 	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
 			"pluginId":   pluginId,
 		}).
-		Delete("/v1/databases/{databaseId}/plugins/{pluginId}")
+		Delete("/deployments/databases/{vendor}/{databaseId}/plugins/{pluginId}")
 	if err != nil {
 		return err
 	}
 	return checkResponseAndReturnError(response)
 }
 
-func (client *RestApiClient) FetchDatabaseAsyncOperationStatus(ctx context.Context, operationId string) (*AsyncOperationFetchResult, error) {
-	var result *AsyncOperationFetchResult
+func (client *RestApiClient) FetchDatabaseAsyncStatus(ctx context.Context, databaseId string, vendor string) (*AsyncDatabaseFetchResult, error) {
+	var result *AsyncDatabaseFetchResult
 	for {
 		response, err := client.ApiClient.R().
 			SetPathParams(map[string]string{
-				"operationId": operationId,
+				"databaseId": databaseId,
+				"vendor":     vendor,
 			}).
-			SetResult(&AsyncOperationFetchResult{}).
-			Get("/v1/operations/{operationId}")
+			SetResult(&AsyncDatabaseFetchResult{}).
+			Get("/deployments/databases/{vendor}/{databaseId}/status")
 		if err != nil {
 			return nil, err
 		}
-		result = response.Result().(*AsyncOperationFetchResult)
-		tflog.Debug(ctx, "FETCH ASYNC OPERATION STATUS API CALL", map[string]interface{}{
-			"Id":           result.Id,
-			"DatabaseId":   result.DatabaseId,
-			"Description":  result.Description,
-			"CurrentState": result.CurrentState,
-			"Stopped":      result.Stopped,
+		result = response.Result().(*AsyncDatabaseFetchResult)
+		tflog.Debug(ctx, "FETCH ASYNC STATUS API CALL", map[string]interface{}{
+			"State":         result.State,
+			"NeedsRestart":  result.NeedsRestart,
+			"IsPending":     result.IsPending,
+			"IsLocked":      result.IsLocked,
+			"UnderIncident": result.UnderIncident,
 		})
-		if result.Stopped {
+		if !result.IsPending {
 			break
 		}
 		time.Sleep(10 * time.Second)
 	}
 
-	if result.CurrentState != "finished" {
-		return nil, fmt.Errorf("async operation is failed. operation id is %s and result is %+v", operationId, result)
+	if result.State != "running" {
+		return nil, fmt.Errorf("Database is not ready. Status result is %+v", result)
 	}
 
 	return result, nil
