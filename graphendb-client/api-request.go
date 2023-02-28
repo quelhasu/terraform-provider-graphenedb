@@ -3,10 +3,10 @@ package graphendbclient
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -14,9 +14,6 @@ import (
 )
 
 func (client *RestApiClient) CreateEnvironment(ctx context.Context, environmentInfo EnvironmentInfo) (*EnvironmentCreateResult, error) {
-	jsonBytes, err := json.MarshalIndent(environmentInfo, "", "  ")
-	log.Printf("ola %+v\n", string(jsonBytes))
-
 	response, err := client.ApiClient.R().
 		SetBody(environmentInfo).
 		SetResult(&EnvironmentCreateResult{}).
@@ -78,8 +75,6 @@ func (client *RestApiClient) DeleteDatabase(ctx context.Context, databaseId stri
 
 func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo DatabaseInfo, vendor string) (string, error) {
 	databaseInfo.EnvironmentID = client.EnvironementId
-	jsonBytes, err := json.MarshalIndent(databaseInfo, "", "  ")
-	log.Printf("ola %+v\n", string(jsonBytes))
 	response, err := client.ApiClient.R().
 		SetBody(databaseInfo).
 		SetPathParams(map[string]string{
@@ -199,7 +194,17 @@ func (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId str
 }
 
 func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string, pluginInfo PluginInfo, vendor string) (*PluginCreateResult, error) {
-	pluginBytes, _ := ioutil.ReadFile(pluginInfo.Url)
+	res, err := http.Get(pluginInfo.Url)
+	if err != nil {
+		log.Fatalf("(http.Get): Error fetching plugin %v - %v", pluginInfo.Url, err)
+	}
+	pluginBytes, err := ioutil.ReadAll(res.Body)
+
+	if err != nil {
+		log.Fatalf("(ioutil.ReadAll): Error reading the file %v - %v", pluginInfo.Name, err)
+	}
+	res.Body.Close()
+
 	response, err := client.ApiClient.R().
 		SetFileReader("file", pluginInfo.Name, bytes.NewReader(pluginBytes)).
 		SetFormData(map[string]string{

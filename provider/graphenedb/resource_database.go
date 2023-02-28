@@ -272,6 +272,7 @@ func extractPluginInfoFromSchema(ctx context.Context, d *schema.ResourceData) []
 			current := inputPlugin.(map[string]interface{})
 			oi := graphendbclient.PluginInfo{
 				Name: current["name"].(string),
+				Url:  current["url"].(string),
 			}
 			databasePlugins = append(databasePlugins, oi)
 		}
