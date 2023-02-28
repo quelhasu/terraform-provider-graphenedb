@@ -70,6 +70,30 @@ func resourceDatabase() *schema.Resource {
 					return
 				},
 			},
+			"domain_name": {
+				Type:     schema.TypeString,
+				Required: false,
+				Computed: true,
+				ForceNew: false,
+			},
+			"private_domain_name": {
+				Type:     schema.TypeString,
+				Required: false,
+				Computed: true,
+				ForceNew: false,
+			},
+			"http_port": {
+				Type:     schema.TypeInt,
+				Required: false,
+				Computed: true,
+				ForceNew: false,
+			},
+			"bolt_port": {
+				Type:     schema.TypeInt,
+				Required: false,
+				Computed: true,
+				ForceNew: false,
+			},
 			"plugins": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -132,7 +156,7 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, meta in
 			})
 		}
 		tflog.Debug(ctx, "CREATE DATABASE - DATABASE RESTARTED SUCCESSFULLY", map[string]interface{}{
-			"DatabaseId": databaseId,
+			"DatabaseId": databaseId	,
 		})
 	}
 
@@ -155,6 +179,10 @@ func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, meta inte
 	tflog.Debug(ctx, "READ DATABASE - DATABASE INFO", map[string]interface{}{
 		"DatabaseInfo": fmt.Sprintf("%+v", databaseInfo),
 	})
+	d.Set("domain_name", databaseInfo.DomainName)
+	d.Set("private_domain_name", databaseInfo.PrivateDomainName)
+	d.Set("http_port", databaseInfo.HTTPPort)
+	d.Set("bolt_port", databaseInfo.BoltPort)
 
 	if databaseInfo == nil {
 		tflog.Debug(ctx, "READ DATABASE - DATABASE NOT FOUND", map[string]interface{}{

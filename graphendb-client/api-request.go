@@ -83,11 +83,11 @@ func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo Da
 		SetResult(&DatabaseCreateResult{}).
 		Post("/deployments/databases/{vendor}")
 	if err != nil {
-		return "", err
+		return "nil", err
 	}
 	err = checkResponseAndReturnError(response)
 	if err != nil {
-		return "", err
+		return "nil", err
 	}
 	result := response.Result().(*DatabaseCreateResult)
 
@@ -95,7 +95,7 @@ func (client *RestApiClient) CreateDatabase(ctx context.Context, databaseInfo Da
 		_, err = client.FetchDatabaseAsyncStatus(ctx, result.Database.ID, vendor)
 	}
 	if err != nil {
-		return "", err
+		return "nil", err
 	}
 	return result.Database.ID, nil
 }
@@ -266,7 +266,7 @@ func (client *RestApiClient) FetchDatabaseAsyncStatus(ctx context.Context, datab
 			"IsLocked":      result.IsLocked,
 			"UnderIncident": result.UnderIncident,
 		})
-		if !result.IsPending {
+		if !result.IsPending && !result.IsLocked && !result.NeedsRestart && !result.UnderIncident {
 			break
 		}
 		time.Sleep(10 * time.Second)
