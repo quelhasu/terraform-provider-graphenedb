@@ -1,13 +1,58 @@
 package graphendbclient
 
-type VpcInfo struct {
-	Label     string `json:"label"`
-	AwsRegion string `json:"awsRegion"`
-	CidrBlock string `json:"cidrBlock"`
+type EnvironmentInfo struct {
+	Label          string `json:"label"`
+	OrganizationId string `json:"organizationId"`
+	GrantType      string `json:"grantType"`
+	Region         string `json:"region"`
+	Cidr           string `json:"cidr"`
 }
 
-type VpcCreateResult struct {
-	Id string `json:"id"`
+type EnvironmentCreateResult struct {
+	Id             string        `json:"id"`
+	Label          string        `json:"label"`
+	OrganizationId string        `json:"organizationId"`
+	GrantType      string        `json:"grantType"`
+	Region         string        `json:"region"`
+	Cidr           string        `json:"cidr"`
+	CreatedAt      string        `json:"createdAt"`
+	VpcPeers       []VpcPeer     `json:"vpcPeers"`
+	NetworkRules   []NetworkRule `json:"networkRules"`
+	StoppedAt      string        `json:"stoppedAt"`
+}
+
+type VpcPeer struct {
+	Id                  string   `json:"id"`
+	Label               string   `json:"label"`
+	PeeringConnectionId string   `json:"peeringConnectionId"`
+	AwsAccountId        string   `json:"awsAccountId"`
+	VpcId               string   `json:"vpcId"`
+	Cidrs               []string `json:"cidrs"`
+	Status              string   `json:"status"`
+}
+
+type NetworkRule struct {
+	Label     string `json:"label"`
+	Id        string `json:"id"`
+	CreatedAt string `json:"createdAt"`
+	IpRange   string `json:"ipRange"`
+}
+
+type VpcPeeringInfo struct {
+	Label         string `json:"label"`
+	AwsAccountId  string `json:"awsAccountId"`
+	VpcId         string `json:"vpcId"`
+	PeerVpcRegion string `json:"peerVpcRegion"`
+}
+
+type VpcPeeringCreateResult struct {
+	ID                  string   `json:"id"`
+	Label               string   `json:"label"`
+	PeeringConnectionID string   `json:"peeringConnectionId"`
+	AWSAccountID        string   `json:"awsAccountId"`
+	VPCID               string   `json:"vpcId"`
+	CIDRs               []string `json:"cidrs"`
+	Status              string   `json:"status"`
 }
 
 // type DatabaseInfo struct {
@@ -19,19 +64,42 @@ type VpcCreateResult struct {
 // }
 
 type DatabaseInfo struct {
-	Name      string `json:"name"`
-	Version   string `json:"version"`
-	AwsRegion string `json:"awsRegion"`
-	Plan      string `json:"plan"`
-	Vpc       string `json:"privateNetworkId"`
+	EnvironmentID      string        `json:"environmentId"`
+	Name               string        `json:"name"`
+	Plan               string        `json:"plan"`
+	Edition            string        `json:"edition"`
+	EnabledExtrasKinds []interface{} `json:"enabledExtrasKinds"`
+	Version            string        `json:"version"`
 }
 
 type DatabaseUpgradeInfo struct {
-	Plan string `json:"plan"`
+	Plan string `json:"targetPlanName"`
 }
 
 type DatabaseCreateResult struct {
-	OperationID string `json:"operation"`
+	Database struct {
+		ID                string                   `json:"id"`
+		OrganizationID    string                   `json:"organizationId"`
+		EnvironmentID     string                   `json:"environmentId"`
+		Name              string                   `json:"name"`
+		DomainName        string                   `json:"domainName"`
+		PrivateDomainName string                   `json:"privateDomainName"`
+		HTTPPort          int                      `json:"httpPort"`
+		BoltPort          int                      `json:"boltPort"`
+		CreatedAt         string                   `json:"createdAt"`
+		Status            AsyncDatabaseFetchResult `json:"status"`
+		Plan              string                   `json:"plan"`
+		Version           struct {
+			Number  string `json:"number"`
+			Edition string `json:"edition"`
+			Vendor  string `json:"vendor"`
+		} `json:"version"`
+		Nodes []struct {
+			StationID string `json:"stationId"`
+			NodeType  string `json:"nodeType"`
+		} `json:"nodes"`
+	} `json:"database"`
+	OperationID string `json:"operationId"`
 }
 
 type DatabaseUpdateResult struct {
@@ -46,35 +114,54 @@ type AsyncOperationFetchResult struct {
 	Stopped      bool   `json:"stopped"`
 }
 
+type AsyncDatabaseFetchResult struct {
+	State                 string `json:"state"`
+	NeedsRestart          bool   `json:"needsRestart"`
+	IsPending             bool   `json:"isPending"`
+	IsLocked              bool   `json:"isLocked"`
+	UnderIncident         bool   `json:"underIncident"`
+	LastHealthCheckStatus struct {
+		LastCheckSecondsAgo int    `json:"lastCheckSecondsAgo"`
+		Status              string `json:"status"`
+	} `json:"lastHealthCheckStatus"`
+}
+
 type UpstreamDatabaseInfo struct {
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-	CreatedAt      string `json:"createdAt"`
-	Version        string `json:"version"`
-	VersionEdition string `json:"versionEdition"`
-	VersionKey     string `json:"versionKey"`
-	CurrentSize    int64  `json:"currentSize"`
-	MaxSize        int64  `json:"maxSize"`
-	Plan           struct {
-		PlanType string `json:"type"`
-	} `json:"plan"`
-	AwsRegion        string `json:"awsRegion"`
-	PrivateNetworkId string `json:"privateNetworkId"`
-	BoltURL          string `json:"boltURL"`
-	RestUrl          string `json:"restUrl"`
-	BrowserUrl       string `json:"browserUrl"`
-	MetricsURL       string `json:"metricsURL"`
-	Plugins          []struct {
-		Id        string `json:"id"`
-		Name      string `json:"name"`
-		CreatedAt string `json:"createdAt"`
-		Enabled   bool   `json:"enabled"`
-		Type      string `json:"type"`
-	} `json:"plugins"`
+	ID                string `json:"id"`
+	OrganizationID    string `json:"organizationId"`
+	EnvironmentID     string `json:"environmentId"`
+	Name              string `json:"name"`
+	DomainName        string `json:"domainName"`
+	PrivateDomainName string `json:"privateDomainName"`
+	HTTPPort          int    `json:"httpPort"`
+	BoltPort          int    `json:"boltPort"`
+	CreatedAt         string `json:"createdAt"`
+	Status            struct {
+		State                 string `json:"state"`
+		NeedsRestart          bool   `json:"needsRestart"`
+		IsPending             bool   `json:"isPending"`
+		IsLocked              bool   `json:"isLocked"`
+		UnderIncident         bool   `json:"underIncident"`
+		LastHealthCheckStatus struct {
+			LastCheckSecondsAgo int    `json:"lastCheckSecondsAgo"`
+			Status              string `json:"status"`
+		} `json:"lastHealthCheckStatus"`
+	} `json:"status"`
+	Plan    string `json:"plan"`
+	Version struct {
+		Number  string `json:"number"`
+		Edition string `json:"edition"`
+		Vendor  string `json:"vendor"`
+	} `json:"version"`
+	Nodes []struct {
+		StationID string `json:"stationId"`
+		NodeType  string `json:"nodeType"`
+	} `json:"nodes"`
 }
 
 type DatabaseRestartResult struct {
-	OperationID string `json:"operationId"`
+	StationIds []string `json:"stationIds"`
+	Reset      bool     `json:"reset"`
 }
 
 type PluginStatus string
@@ -85,9 +172,14 @@ const (
 )
 
 type PluginInfo struct {
-	Name string `json:"name"`
-	Kind string `json:"kind"`
-	Url  string `json:"url"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
+	Url       string `json:"url"`
+}
+
+type PluginListResponse struct {
+	Plugins []PluginInfo `json:"plugins"`
 }
 
 type PluginStatusInfo struct {
@@ -95,10 +187,7 @@ type PluginStatusInfo struct {
 }
 
 type PluginCreateResult struct {
-	Detail struct {
-		Id      string `json:"id"`
-		Kind    string `json:"kind"`
-		Enabled bool   `json:"enabled"`
-		Name    string `json:"name"`
-	} `json:"plugin"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	CreatedAt string `json:"createdAt"`
 }

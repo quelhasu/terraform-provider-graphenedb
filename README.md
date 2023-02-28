@@ -7,7 +7,7 @@
 
 ## Usage
 
-```
+```terraform
 terraform {
 	required_providers {
 		graphenedb =  {
@@ -17,17 +17,20 @@ terraform {
 	}
 }
 
-provider  "graphenedb" {
-	endpoint =  "https://api.graphenedb.com"
-	api_key =  "your_api_key"
-}
+ provider "graphenedb" {
+   environment_id = "graphenedb_environment_id"
+   client_id      = "graphenedb_client_id"
+   client_secret  = "graphenedb_client_secret"
+ }
 ```
 
 ## Building The Provider
 
 Clone the repository.
 
-- **Windows:** Run `windows-build.sh` file.Change the version on the changes and run bash file. It buidl the project and copy new version in local terraform registry. not you can use the local registry provder like this
+### Windows
+
+Run `windows-build.sh` file.Change the version on the changes and run bash file. It buidl the project and copy new version in local terraform registry. not you can use the local registry provder like this
 
 ```sh
 terraform {
@@ -40,45 +43,49 @@ terraform {
 }
 ```
 
-- **Other systems:** Use make file for build and release
+### Other systems
+
+Use make file for build and release
 
 ## Using the provider
 
-## graphenedb_vpc
+## graphenedb_vpc_peering
 
-```
-resource  "graphenedb_vpc"  "vpc" {
-	label =  "vpc_label"
-	region =  "vpc_region"
-	cidr =  "vpc_cidr"
+Create a peering request to the provided vpc.
+
+```tf
+resource "graphenedb_vpc_peering" "vpc" {
+	label           = "vpc_name"
+	aws_account_id  = "vpc_aws_account_id"
+	vpc_id          = "vpc_id"
+	peer_vpc_region = "vpc_peer_region"
 }
 ```
 
 ## graphenedb_database
 
-```
-resource  "graphenedb_database"  "db" {
-	name =  "db_name"
-	version =  "db_version"
-	region =  "db_region"
-	plan =  "db_plan"
-	vpc_id =  graphenedb_vpc.vpc.id
+Create a database with plugins url
 
-	plugins {
-		name =  "gds"
-		kind =  "extension"
-		url =  "https://github.com/neo4j/graph-data-science/releases/download/2.1.5/neo4j-graph-data-science-2.1.5.zip"
-	}
+```tf
+resource "graphenedb_database" "db" {
+  name    = "db_name"
+  version = "db_version"
+  plan    = "db_plan"
+  edition = "db_edition"
+  vendor  = "db_vendor"
+  plugins {
+    name = "gds"
+    url  = "https://github.com/neo4j/graph-data-science/releases/download/2.1.5/neo4j-graph-data-science-2.1.5.zip"
+  }
 
-	plugins {
-		name =  "apoc"
-		kind =  "stored-procedure"
-		url =  "https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/4.3.0.6/apoc-4.3.0.6-all.jar"
-	}
+  plugins {
+    name = "apoc"
+    url  = "https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/4.3.0.6/apoc-4.3.0.6-all.jar"
+  }
 
-	depends_on  =  [
-		graphenedb_vpc.vpc
-	]
+  depends_on = [
+    graphenedb_vpc_peering.vpc
+  ]
 }
 ```
 
