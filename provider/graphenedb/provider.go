@@ -15,8 +15,8 @@ func Provider() *schema.Provider {
 	// cli.ClientLogger(ioutil.Discard, os.Stdout, os.Stdout, os.Stderr)
 	return &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
-			"graphenedb_vpc": resourceVpc(),
-			"graphenedb_database": resourceDatabase(),
+			"graphenedb_vpc_peering": resourceVpcPeering(),
+			"graphenedb_database":    resourceDatabase(),
 		},
 		Schema: map[string]*schema.Schema{
 			"api_key": {
