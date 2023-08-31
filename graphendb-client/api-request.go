@@ -108,10 +108,11 @@ func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId stri
 			"vendor":     vendor,
 		}).
 		SetResult(&DatabaseUpdateResult{}).
-		Put("/deployments/databases/{vendor}/{databaseId}/plan/change")
+		Post("/deployments/databases/{vendor}/{databaseId}/plan/change")
 	if err != nil {
 		return "", err
 	}
+	time.Sleep(10 * time.Second)
 	err = checkResponseAndReturnError(response)
 	if err != nil {
 		return "", err
