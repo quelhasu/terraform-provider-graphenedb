@@ -17,6 +17,12 @@ resource "graphenedb_database" "db" {
     url  = "https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/4.3.0.6/apoc-4.3.0.6-all.jar"
   }
 
+  configuration {
+    key    = "dbms.transaction.timeout"
+    value  = "45s"
+    secret = false
+  }
+
   depends_on = [
     graphenedb_vpc_peering.vpc
   ]
