@@ -73,6 +73,7 @@ resource "graphenedb_database" "db" {
   plan    = "db_plan"
   edition = "db_edition"
   vendor  = "db_vendor"
+
   plugins {
     name = "gds"
     url  = "https://github.com/neo4j/graph-data-science/releases/download/2.1.5/neo4j-graph-data-science-2.1.5.zip"
@@ -81,6 +82,12 @@ resource "graphenedb_database" "db" {
   plugins {
     name = "apoc"
     url  = "https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/4.3.0.6/apoc-4.3.0.6-all.jar"
+  }
+
+  configuration {
+    key    = "dbms.transaction.timeout"
+    value  = "45s"
+    secret = false
   }
 
   depends_on = [
@@ -95,7 +102,7 @@ resource "graphenedb_database" "db" {
 $ export GITHUB_TOKEN=...
 $ git tag vX.Y.Z
 $ git push origin vX.Y.Z
-$ goreleaser release --rm-dist --skip-sign
+$ goreleaser release --clean --skip-sign
 # sign manually the SHA file
 $ gpg --detach-sign dist/terraform-provider-graphenedb_X.Y.Z_SHA256SUMS
 ```

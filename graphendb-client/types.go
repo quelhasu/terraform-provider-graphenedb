@@ -191,3 +191,17 @@ type PluginCreateResult struct {
 	Name      string `json:"name"`
 	CreatedAt string `json:"createdAt"`
 }
+
+type ConfigInfo struct {
+	Key    string `json:"key"`
+	Value  string `json:"value"`
+	Secret bool   `json:"secret"`
+}
+
+type ConfigListResponse struct {
+	Configs []ConfigInfo `json:"configuration"`
+}
+
+type ConfigListEntry struct {
+	Configs []ConfigInfo `json:"configuration"`
+}
