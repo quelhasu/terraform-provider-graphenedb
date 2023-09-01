@@ -113,6 +113,30 @@ func resourceDatabase() *schema.Resource {
 					},
 				},
 			},
+			"configuration": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: false,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: false,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Required: true,
+							ForceNew: false,
+						},
+						"secret": {
+							Type:     schema.TypeBool,
+							Required: true,
+							ForceNew: false,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -146,7 +170,29 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, meta in
 		time.Sleep(waitForPlugins * time.Second)
 	}
 
-	if len(plugins) > 0 {
+	inputConfigs := extractConfigInfoFromSchema(ctx, d)
+
+	if len(inputConfigs) > 0 {
+		DBConfigsInfo, err := meta.(*graphendbclient.RestApiClient).GetUpstreamDatabaseConfigsInfo(ctx, databaseId, d.Get("vendor").(string))
+		tflog.Debug(ctx, "CREATE DATABASE - DATABASE CONFIGS")
+
+		newConfigs := mergeConfigs(inputConfigs, DBConfigsInfo.Configs)
+
+		configsReplaceResult, err := meta.(*graphendbclient.RestApiClient).ReplaceDatabaseConfigs(ctx, databaseId, d.Get("vendor").(string), newConfigs)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		tflog.Debug(ctx, "CREATE DATABASE - CONFIGS REPLACED SUCCESSFULLY")
+		for _, config := range configsReplaceResult.Configs {
+			tflog.Debug(ctx, "Key: %s, Value: %s, Secret: %v\n", map[string]interface{}{
+				"Key":    config.Key,
+				"Value":  config.Value,
+				"Secret": config.Secret,
+			})
+		}
+	}
+
+	if len(plugins) > 0 || len(inputConfigs) > 0 {
 		err = meta.(*graphendbclient.RestApiClient).RestartDatabase(ctx, databaseId, d.Get("vendor").(string))
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
@@ -198,6 +244,39 @@ func resourceDatabaseRead(ctx context.Context, d *schema.ResourceData, meta inte
 func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	databaseId := d.Id()
+
+	if d.HasChanges("configuration") {
+		tflog.Debug(ctx, "UPDATE DATABASE SETTINGS - DATABASE CONFIGS")
+		var configsReplaceResult *graphendbclient.ConfigListResponse
+
+		inputConfigs := extractConfigInfoFromSchema(ctx, d)
+		DBConfigsInfo, err := meta.(*graphendbclient.RestApiClient).GetUpstreamDatabaseConfigsInfo(ctx, databaseId, d.Get("vendor").(string))
+		if err != nil {
+			return diag.FromErr(err)
+		}
+
+		if len(inputConfigs) > 0 {
+			newConfigs := mergeConfigs(inputConfigs, DBConfigsInfo.Configs)
+
+			configsReplaceResult, err = meta.(*graphendbclient.RestApiClient).ReplaceDatabaseConfigs(ctx, databaseId, d.Get("vendor").(string), newConfigs)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		} else {
+			configsReplaceResult, err = meta.(*graphendbclient.RestApiClient).ReplaceDatabaseConfigs(ctx, databaseId, d.Get("vendor").(string), DBConfigsInfo.Configs)
+			if err != nil {
+				return diag.FromErr(err)
+			}
+		}
+		tflog.Debug(ctx, "UPDATE DATABASE SETTINGS - CONFIGS REPLACED SUCCESSFULLY")
+		for _, config := range configsReplaceResult.Configs {
+			tflog.Debug(ctx, "Configs updated", map[string]interface{}{
+				"Key":    config.Key,
+				"Value":  config.Value,
+				"Secret": config.Secret,
+			})
+		}
+	}
 
 	if d.HasChanges("plugins") {
 		tflog.Debug(ctx, "UPDATE DATABASE - DATABASE PLUGIN CHANGED")
@@ -251,7 +330,7 @@ func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta in
 
 	time.Sleep(waitAfterCreateOrUpdate * time.Second)
 
-	if d.HasChanges("plugins") && !d.HasChange("plan") {
+	if (d.HasChanges("plugins") || d.HasChanges("configuration")) && !d.HasChange("plan") {
 		err := meta.(*graphendbclient.RestApiClient).RestartDatabase(ctx, databaseId, d.Get("vendor").(string))
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
@@ -309,6 +388,24 @@ func extractPluginInfoFromSchema(ctx context.Context, d *schema.ResourceData) []
 	return nil
 }
 
+func extractConfigInfoFromSchema(ctx context.Context, d *schema.ResourceData) []graphendbclient.ConfigInfo {
+	if d.Get("configuration") != nil {
+		inputConfigs := d.Get("configuration").([]interface{})
+		databaseConfigs := []graphendbclient.ConfigInfo{}
+		for _, inputConfig := range inputConfigs {
+			current := inputConfig.(map[string]interface{})
+			oi := graphendbclient.ConfigInfo{
+				Key:    current["key"].(string),
+				Value:  current["value"].(string),
+				Secret: current["secret"].(bool),
+			}
+			databaseConfigs = append(databaseConfigs, oi)
+		}
+		return databaseConfigs
+	}
+	return nil
+}
+
 func getPluginByName(ctx context.Context, allPlugins []graphendbclient.PluginInfo, pluginName string) *graphendbclient.PluginInfo {
 	if len(allPlugins) > 0 {
 		for _, plugin := range allPlugins {
@@ -318,4 +415,32 @@ func getPluginByName(ctx context.Context, allPlugins []graphendbclient.PluginInf
 		}
 	}
 	return nil
+}
+
+func mergeConfigs(baseList []graphendbclient.ConfigInfo, newList []graphendbclient.ConfigInfo) []graphendbclient.ConfigInfo {
+	mergedConfigs := make(map[string]graphendbclient.ConfigInfo)
+
+	for _, config := range baseList {
+		mergedConfigs[config.Key] = config
+	}
+
+	for _, config := range newList {
+		if existingConfig, exists := mergedConfigs[config.Key]; exists {
+			if existingConfig.Value != config.Value {
+				existingConfig.Value = config.Value
+			}
+			if existingConfig.Secret != config.Secret {
+				existingConfig.Secret = config.Secret
+			}
+		} else {
+			mergedConfigs[config.Key] = config
+		}
+	}
+
+	var mergedList []graphendbclient.ConfigInfo
+	for _, config := range mergedConfigs {
+		mergedList = append(mergedList, config)
+	}
+
+	return mergedList
 }

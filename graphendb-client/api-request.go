@@ -171,6 +171,55 @@ func (client *RestApiClient) GetUpstreamDatabasePluginsInfo(ctx context.Context,
 	return response.Result().(*PluginListResponse), nil
 }
 
+func (client *RestApiClient) GetUpstreamDatabaseConfigsInfo(ctx context.Context, databaseId string, vendor string) (*ConfigListResponse, error) {
+	response, err := client.ApiClient.R().
+		SetPathParams(map[string]string{
+			"databaseId": databaseId,
+			"vendor":     vendor,
+		}).
+		SetResult(&ConfigListResponse{}).
+		Get("/deployments/databases/{vendor}/{databaseId}/settings/config")
+	if response.StatusCode() == 404 {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	err = checkResponseAndReturnError(response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Result().(*ConfigListResponse), nil
+}
+
+func (client *RestApiClient) ReplaceDatabaseConfigs(ctx context.Context, databaseId string, vendor string, configs []ConfigInfo) (*ConfigListResponse, error) {
+	configsEntry := ConfigListEntry{Configs: configs}
+	for _, config := range configsEntry.Configs {
+		tflog.Debug(ctx, "CONFIGS", map[string]interface{}{
+			"Key":    config.Key,
+			"Value":  config.Value,
+			"Secret": config.Secret,
+		})
+	}
+	response, err := client.ApiClient.R().
+		SetBody(configsEntry).
+		SetPathParams(map[string]string{
+			"databaseId": databaseId,
+			"vendor":     vendor,
+		}).
+		SetResult(&ConfigListResponse{}).
+		Put("/deployments/databases/{vendor}/{databaseId}/settings/config")
+
+	if err != nil {
+		return nil, err
+	}
+	err = checkResponseAndReturnError(response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Result().(*ConfigListResponse), nil
+}
+
 func (client *RestApiClient) RestartDatabase(ctx context.Context, databaseId string, vendor string) error {
 	response, err := client.ApiClient.R().
 		SetBody(map[string]interface{}{"reset": true}).
