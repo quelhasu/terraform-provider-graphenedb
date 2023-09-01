@@ -103,7 +103,7 @@ func resourceDatabase() *schema.Resource {
 						"name": {
 							Type:     schema.TypeString,
 							Required: true,
-							ForceNew: true,
+							ForceNew: false,
 						},
 						"url": {
 							Type:     schema.TypeString,
@@ -156,7 +156,7 @@ func resourceDatabaseCreate(ctx context.Context, d *schema.ResourceData, meta in
 			})
 		}
 		tflog.Debug(ctx, "CREATE DATABASE - DATABASE RESTARTED SUCCESSFULLY", map[string]interface{}{
-			"DatabaseId": databaseId	,
+			"DatabaseId": databaseId,
 		})
 	}
 
@@ -211,7 +211,7 @@ func resourceDatabaseUpdate(ctx context.Context, d *schema.ResourceData, meta in
 					"DatabaseId": databaseId,
 					"PluginId":   plugin.ID,
 				})
-				err = meta.(*graphendbclient.RestApiClient).DeletePlugin(ctx, databaseId, plugin.ID)
+				err = meta.(*graphendbclient.RestApiClient).DeletePlugin(ctx, databaseId, d.Get("vendor").(string), plugin.ID)
 				if err != nil {
 					return diag.FromErr(err)
 				}

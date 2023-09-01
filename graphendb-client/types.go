@@ -107,11 +107,11 @@ type DatabaseUpdateResult struct {
 }
 
 type AsyncOperationFetchResult struct {
-	Id           string `json:"id"`
-	DatabaseId   string `json:"databaseId"`
-	Description  string `json:"description"`
-	CurrentState string `json:"currentState"`
-	Stopped      bool   `json:"stopped"`
+	Id                string `json:"id"`
+	NextOperationId   string `json:"nextOperationId"`
+	Status            string `json:"status"`
+	StartedAt         string `json:"startedAt"`
+	DurationInSeconds int    `json:"durationInSeconds"`
 }
 
 type AsyncDatabaseFetchResult struct {
