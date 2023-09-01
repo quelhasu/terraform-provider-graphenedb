@@ -39,6 +39,7 @@ The following arguments are supported:
 - `edition` (Required) - The edition of Neo4j to use for the database instance.
 - `vendor` (Required) - The vendor of Neo4j to use for the database instance. The available vendors are _graphneo_ and _ongdb_.
 - `plugins` (Optional) - A list of plugin objects to install in the database instance. Each object must have the name and url attributes.
+- `configuration` (Optional) - A list of configuration objects to set in the database instance. Each object must have the `key`, `value` and `secret` attributes.
 
 ## Attribute Reference
 
