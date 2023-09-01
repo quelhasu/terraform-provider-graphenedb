@@ -112,12 +112,16 @@ func (client *RestApiClient) UpdateDatabase(ctx context.Context, databaseId stri
 	if err != nil {
 		return "", err
 	}
-	time.Sleep(10 * time.Second)
 	err = checkResponseAndReturnError(response)
 	if err != nil {
 		return "", err
 	}
 	result := response.Result().(*DatabaseUpdateResult)
+	_, err = client.FetchOperationAsyncStatus(ctx, databaseId, vendor, result.OperationID)
+	if err != nil {
+		return "", err
+	}
+
 	_, err = client.FetchDatabaseAsyncStatus(ctx, databaseId, vendor)
 	if err != nil {
 		return "", err
@@ -233,17 +237,61 @@ func (client *RestApiClient) CreatePlugin(ctx context.Context, databaseId string
 	return response.Result().(*PluginCreateResult), nil
 }
 
-func (client *RestApiClient) DeletePlugin(ctx context.Context, databaseId string, pluginId string) error {
+func (client *RestApiClient) DeletePlugin(ctx context.Context, databaseId string, vendor string, pluginId string) error {
 	response, err := client.ApiClient.R().
 		SetPathParams(map[string]string{
 			"databaseId": databaseId,
 			"pluginId":   pluginId,
+			"vendor":     vendor,
 		}).
 		Delete("/deployments/databases/{vendor}/{databaseId}/plugins/{pluginId}")
 	if err != nil {
 		return err
 	}
 	return checkResponseAndReturnError(response)
+}
+
+func (client *RestApiClient) FetchOperationAsyncStatus(ctx context.Context, databaseId string, vendor string, operationId string) (*AsyncOperationFetchResult, error) {
+	var result *AsyncOperationFetchResult
+	for {
+		response, err := client.ApiClient.R().
+			SetPathParams(map[string]string{
+				"databaseId":  databaseId,
+				"vendor":      vendor,
+				"operationId": operationId,
+			}).
+			SetResult(&AsyncOperationFetchResult{}).
+			Get("/deployments/databases/{vendor}/{databaseId}/operations/{operationId}")
+		if err != nil {
+			return nil, err
+		}
+		result = response.Result().(*AsyncOperationFetchResult)
+		tflog.Debug(ctx, "FETCH ASYNC STATUS API CALL", map[string]interface{}{
+			"Id":                result.Id,
+			"Status":            result.Status,
+			"NextOperationId":   result.NextOperationId,
+			"StartedAt":         result.StartedAt,
+			"DurationInSeconds": result.DurationInSeconds,
+		})
+		if result.Status == "finished" {
+			tflog.Debug(ctx, "OPERATION %s IS FINISHED, NEXT OPERATION IS %s", map[string]interface{}{
+				"OperationId":     result.Id,
+				"NextOperationId": result.NextOperationId,
+			})
+			if result.NextOperationId != "" {
+				operationId = result.NextOperationId
+			} else {
+				break
+			}
+		}
+		time.Sleep(10 * time.Second)
+	}
+
+	if result.Status != "running" {
+		return nil, fmt.Errorf("Operation is not ready. Status result is %+v", result)
+	}
+
+	return result, nil
 }
 
 func (client *RestApiClient) FetchDatabaseAsyncStatus(ctx context.Context, databaseId string, vendor string) (*AsyncDatabaseFetchResult, error) {
